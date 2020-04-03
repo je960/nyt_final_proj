@@ -1,0 +1,50 @@
+---
+title: "nyt_final_proj"
+author: "Jerrica Li"
+date: "4/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include = FALSE}
+library(tidyverse)
+library(dplyr)
+library(infer)
+library(tidycensus)
+library(ggplot2)
+library(ggthemes)
+library(lubridate)
+```
+
+```{r reading, include = FALSE}
+x <- read.csv("us-states.csv") 
+
+wash <- x %>% 
+  filter(state == "Washington") %>% 
+  mutate(new_date = as_date(date)) %>% 
+  select(cases, new_date)
+```
+
+```{r plotting, include = FALSE}
+
+ggplot(wash, aes(x = new_date, y = cases)) +
+  geom_line() +
+  geom_point() + 
+  theme_minimal() +
+ # https://stackoverflow.com/questions/1330989/rotating-and-spacing-axis-labels-in-ggplot2
+  theme(axis.text.x = element_text(angle = 70, hjust = 1), 
+        panel.grid.major = element_blank()) + 
+  labs(title = "Confirmed Corona Cases by State", 
+       x = "date", 
+       y = "confirmed cases") +
+  scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
+  #geom_area from this github https://gist.github.com/jtrive84/b1a5d191358883dea1d511d8c78929b6#file-ggplot_auc-r-L9
+  
+  geom_area(mapping=aes(x=new_date), fill="#9898fb", alpha=.5) 
+  
+  #I was looking at this https://stackoverflow.com/questions/47667994/ggplot-x-axis-labels-with-all-x-axis-values for the longest time before I realized that I can change this by using scale_x_date()
+
+```
