@@ -1,0 +1,12 @@
+name: nyt_corona
+title: nyt_corona
+username:
+account: je960
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2053992
+bundleId: 2966503
+url: https://je960.shinyapps.io/nyt_corona/
+when: 1585952877.31022
+asMultiple: FALSE
+asStatic: FALSE
