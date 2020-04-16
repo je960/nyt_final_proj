@@ -21,10 +21,28 @@ library(ggplot2)
 ```
 
 ```{r reading, include = FALSE}
-x <- read.csv("raw_data/us-states.csv") 
+# to have for next week: first tab of the shiny app running - being able to toggle to find a state and then showing the graph of total infections, rate of increasing infections, map of counties colored coded with highest density. 
+
+## Preceptor's primer - Appendix D - among 3 links, 'Mastering Shiny' by Hadley Wickam - Ch.2 ('Your first shiny app')
+x <- read.csv("covid-19-data/us-states.csv") 
+y <- read.csv('covid-19-data/us-counties.csv')
+
+## Harvard Hollis database - Social Explorer
 
 wash <- x %>% 
   filter(state == "Washington") %>% 
+  mutate(new_date = as_date(date)) %>% 
+  select(cases, new_date)
+
+wash$change <- NA
+for(i in 2:nrow(wash)){
+  wash$change[i] <- wash$cases[i] - wash$cases[i - 1]
+}
+
+plot(wash$new_date, log(wash$change), type = 'l')
+
+mass <- x %>% 
+  filter(state == "Massachusetts") %>% 
   mutate(new_date = as_date(date)) %>% 
   select(cases, new_date)
 
