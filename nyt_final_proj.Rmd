@@ -22,12 +22,17 @@ library(ggplot2)
 
 ```{r reading, include = FALSE}
 # to have for next week: first tab of the shiny app running - being able to toggle to find a state and then showing the graph of total infections, rate of increasing infections, map of counties colored coded with highest density. 
+#regress total number of deaths in each state to explanatory variables - by county
+#measure total number of deaths per county and join w/ explorer data then run multivariable regression 
 
 ## Preceptor's primer - Appendix D - among 3 links, 'Mastering Shiny' by Hadley Wickam - Ch.2 ('Your first shiny app')
+#save maps function for next week 
+
 x <- read.csv("covid-19-data/us-states.csv") 
 y <- read.csv('covid-19-data/us-counties.csv')
 
 ## Harvard Hollis database - Social Explorer
+#https://cran.r-project.org/web/packages/dotwhisker/vignettes/dotwhisker-vignette.html
 
 wash <- x %>% 
   filter(state == "Washington") %>% 
