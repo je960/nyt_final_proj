@@ -13,19 +13,30 @@ state_data_shiny <- readRDS("state_data")
 
 ui <- navbarPage(
     "Coronavirus Cases in the US",
+    
+    #first tab shows coronavirus cases over time
     tabPanel("Model",
              fluidPage(
                  titlePanel("Modeling"),
                  sidebarLayout(
                      sidebarPanel(
-                         selectInput(inputId = 'state', label = 'Choose a state:', choice = " "
-                         )),
+                         
+                         #ask user to input state
+                         
+                         selectInput(inputId = 'state', 
+                                     label = 'Choose a state:', 
+                                     choice = levels(state_data_shiny$state))),
+                     
+                     #output state plot
+                     
                      mainPanel(plotOutput("stateplot")))
              )),
+    
     tabPanel("Discussion",
              titlePanel("Discussion Title"),
              p("Tour of the modeling choices you made and 
               an explanation of why you made them")),
+    
     tabPanel("About", 
              titlePanel("About"),
              h3("Project Background and Motivations"),
@@ -36,6 +47,8 @@ ui <- navbarPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    #tab one, render plot of cases over time
     
     output$stateplot <- renderPlot({
     
@@ -54,23 +67,25 @@ server <- function(input, output) {
     
     #Create plot of corona cases over time
     
-    ggplot(choice, aes(x = new_date, y = cases)) +
+    b <- ggplot(choice, aes(x = new_date, y = cases)) +
         geom_line() +
         geom_point() + 
         theme_minimal() +
-
         theme(axis.text.x = element_text(angle = 70, hjust = 1), 
               panel.grid.major = element_blank()) + 
-        labs(title =paste("Confirmed Corona Cases for", input$state, sep = ""),  
+        labs(title =paste("Confirmed Corona Cases for", input$state, sep = " "),  
              x = "Date", 
              y = "Confirmed Cases") +
         scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
         geom_area(mapping=aes(x=new_date), fill="#9898fb", alpha=.5) 
+    
+    #render
+    b
     })
     
-    #remember input$state
+
     
-    
+   ## screatch work from pset, rendering pre-saved plots which may be helpful later 
     output$preImage <- renderImage({
         
         

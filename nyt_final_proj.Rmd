@@ -18,6 +18,7 @@ library(ggplot2)
 library(ggthemes)
 library(lubridate)
 library(ggplot2)
+library(leaflet)
 ```
 
 ```{r reading data}
@@ -31,6 +32,12 @@ state_data <-
   state_data %>% 
   mutate(new_date = as_date(date)) %>% 
   select(-date)
+
+
+county_data <- 
+  county_data %>% 
+  mutate(new_date = as_date(date)) %>% 
+  select(-date)
   
 ##I think this goes into the shiny app...
 wash <- state_data %>% 
@@ -42,6 +49,52 @@ wash <- state_data %>%
   #mutate(new_date = as_date(date)) %>% 
   #select(cases, new_date)
 ```
+
+```{r leaflet}
+
+latest_date <- county_data %>% 
+  filter(state == "Washington") %>% 
+  arrange(desc(new_date)) %>% 
+  slice(1) %>% 
+  pull(new_date)
+
+washington <- county_data %>% 
+  filter(state == "Washington", 
+         new_date == latest_date)
+  
+pal <- colorNumeric("RdYlGn", NULL, n = 10)
+
+  leaflet(washington) %>% 
+  addTiles() %>%
+      addPolygons(fillColor = ~pal(cases),
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1) 
+      #addLegend("bottomright", pal = pal, values = ~change,
+                #title = "Change (%)",
+                #opacity = 1 )
+
+    #found this;   addProviderTiles(providers$JusticeMap.white) does that work??
+  
+  #define a color palette ex green-red
+#transform values keeping in mind your range is from 0-100000
+#log might be good to change colors or manually define shades 
+#try hotspot states like new jersey or ny 
+  #try selecting palates based on number of cases 
+  #addProviderTiles(provider = "CartoDB.Positron")
+  
+#death rates, death rates plotted by county / state and to see is it rural places? urban cities? the south? 
+#by state, see population size over case rate, 
+
+```
+
+
+
+
+
+
+
+
 
 ```{r tab three change in cases over time}
 
