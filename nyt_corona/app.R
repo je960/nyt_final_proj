@@ -32,7 +32,7 @@ ui <- navbarPage(
                      #output state plot and death plot
                      mainPanel(
                         plotlyOutput("stateplot"), 
-                        plotOutput("deathplot"))
+                        plotlyOutput("deathplot"))
                      )
                  )
              ),
@@ -81,7 +81,7 @@ server <- function(input, output) {
     })
     
     #tab one, render plot of deaths over time
-    output$deathplot <- renderPlot({
+    output$deathplot <- renderPlotly({
         
         title <- "Confirmed coronavirus cases"
         

@@ -19,11 +19,19 @@ library(ggthemes)
 library(lubridate)
 library(ggplot2)
 library(leaflet)
+library(rgdal)
 ```
 
 ```{r reading data}
 state_data <- read.csv("covid-19-data/us-states.csv") 
 county_data <- read.csv('covid-19-data/us-counties.csv')
+us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
+
+# Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
+us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("69","64", "68", "70", "74"),]
+
+# Make sure other outling islands are removed.
+us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
 ```
 
 ```{r cleaning data}
