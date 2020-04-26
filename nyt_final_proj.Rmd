@@ -32,13 +32,15 @@ county_data <- read.csv('covid-19-data/us-counties.csv')
 state_data <- 
   state_data %>% 
   mutate(new_date = as_date(date)) %>% 
-  select(-date)
+  select(-date) %>% 
+  mutate(date = new_date)
 
 #clean state data so dates are class "date
 county_data <- 
   county_data %>% 
   mutate(new_date = as_date(date)) %>% 
-  select(-date)
+  select(-date) %>% 
+  mutate(date = new_date)
   
 ```
 
@@ -54,14 +56,14 @@ washington <- county_data %>%
   filter(state == "Washington", 
          new_date == latest_date)
   
-pal <- colorNumeric("RdYlGn", NULL, n = 10)
+#pal <- colorNumeric("RdYlGn", NULL, n = 10)
 
-  leaflet(washington) %>% 
-  addTiles() %>%
-      addPolygons(fillColor = ~pal(cases),
-                  fillOpacity = 0.8,
-                  color = "#BDBDC3",
-                  weight = 1) 
+  #leaflet(washington) %>% 
+  #addTiles() %>%
+      #addPolygons(fillColor = ~pal(cases),
+                  #fillOpacity = 0.8,
+                  #color = "#BDBDC3",
+                  #weight = 1) 
       #addLegend("bottomright", pal = pal, values = ~change,
                 #title = "Change (%)",
                 #opacity = 1 )
