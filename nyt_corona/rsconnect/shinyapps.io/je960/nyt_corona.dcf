@@ -5,8 +5,8 @@ account: je960
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2053992
-bundleId: 2966503
+bundleId: 3068173
 url: https://je960.shinyapps.io/nyt_corona/
-when: 1585952877.31022
+when: 1587928443.20867
 asMultiple: FALSE
 asStatic: FALSE

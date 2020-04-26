@@ -26,28 +26,20 @@ state_data <- read.csv("covid-19-data/us-states.csv")
 county_data <- read.csv('covid-19-data/us-counties.csv')
 ```
 
-```{r tab one cases over time}
+```{r cleaning data}
+#clean state data so dates are class "date
 
 state_data <- 
   state_data %>% 
   mutate(new_date = as_date(date)) %>% 
   select(-date)
 
-
+#clean state data so dates are class "date
 county_data <- 
   county_data %>% 
   mutate(new_date = as_date(date)) %>% 
   select(-date)
   
-##I think this goes into the shiny app...
-wash <- state_data %>% 
-  filter(state == "Washington")
-
-
-#mass <- state_data %>% 
-  #filter(state == "Massachusetts") %>% 
-  #mutate(new_date = as_date(date)) %>% 
-  #select(cases, new_date)
 ```
 
 ```{r leaflet}
