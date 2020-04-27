@@ -6,6 +6,8 @@ library(tidyverse)
 library(dplyr)
 library(ggthemes)
 library(plotly)
+library(leaflet)
+library(shinythemes)
 
 county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
@@ -14,12 +16,16 @@ state_data_shiny <- readRDS("state_data")
 ui <- navbarPage(
     "Coronavirus Cases in the US",
     
+    theme = shinytheme("lumen"),
+    
     #first tab shows coronavirus cases over time
     tabPanel("Model",
              fluidPage(
                  titlePanel("Modeling"),
                  sidebarLayout(
                      sidebarPanel(
+                         
+                         p(tags$em("Be careful about the scale.")),
                          
                          #ask user to input state
                          
@@ -32,7 +38,8 @@ ui <- navbarPage(
                      #output state plot and death plot
                      mainPanel(
                         plotlyOutput("stateplot"), 
-                        plotlyOutput("deathplot"))
+                        plotlyOutput("deathplot"),
+                        leafletOutput("mymap"))
                      )
                  )
              ),
@@ -78,7 +85,7 @@ server <- function(input, output) {
     
         #render
         b
-    })
+        })
     
     #tab one, render plot of deaths over time
     output$deathplot <- renderPlotly({
@@ -109,9 +116,43 @@ server <- function(input, output) {
         
         #render
         c
-    })
+        })
     
-
+    #tab one, render heat map of the state
+    output$mymap <- renderLeaflet({
+        
+        #find latest date
+        latest_date <- county_data %>% 
+            arrange(desc(date)) %>% 
+            slice(1) %>% 
+            pull(date)
+        
+        #find data for latest date
+        latest_data <- county_data %>% 
+            filter(state == input$state, 
+                   date == latest_date)
+        
+        leafmap <- merge(us.map.county, latest_data, by= 'GEOID')
+        
+        
+        popup_dat <- paste0("<strong>State: </strong>",
+                            leafmap$state,
+                            "<br><strong> Number of cases: </strong>",
+                            leafmap$cases)
+        pal <- colorNumeric("RdYlGn", NULL, n = 10)
+        
+        
+        leaflet(data = leafmap) %>% 
+            addTiles() %>%
+            addPolygons(fillColor = ~pal(cases),
+                        fillOpacity = 0.8,
+                        color = "#BDBDC3",
+                        weight = 1,
+                        popup = popup_dat) %>%
+            addLegend("bottomright", pal = pal, values = ~cases,
+                      title = "Number of cases",
+                      opacity = 1 )
+    })
  
    ## screatch work from pset, rendering pre-saved plots which may be helpful later 
     output$preImage <- renderImage({

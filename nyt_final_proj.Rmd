@@ -98,8 +98,6 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
       #addLegend("bottomright", pal = pal, values = ~change,
                 #title = "Change (%)",
                 #opacity = 1 )
-
-    #found this;   addProviderTiles(providers$JusticeMap.white) does that work??
   
   #define a color palette ex green-red
 #transform values keeping in mind your range is from 0-100000
@@ -113,6 +111,39 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
 
 ```
 
+```{r}
+       #find latest date
+        latest_date <- county_data %>% 
+            arrange(desc(date)) %>% 
+            slice(1) %>% 
+            pull(date)
+        
+        #find data for latest date
+        latest_data <- county_data %>% 
+            filter(state == "Alabama", 
+                   date == latest_date)
+        
+        leafmap <- merge(us.map.county, latest_data, by= 'GEOID')
+        
+        
+        popup_dat <- paste0("<strong>State: </strong>",
+                            leafmap$state,
+                            "<br><strong> Number of cases: </strong>",
+                            leafmap$cases)
+        pal <- colorNumeric("RdYlGn", NULL, n = 10)
+        
+        
+        leaflet(data = leafmap) %>% 
+            addTiles() %>%
+            addPolygons(fillColor = ~pal(cases),
+                        fillOpacity = 0.8,
+                        color = "#BDBDC3",
+                        weight = 1,
+                        popup = popup_dat) %>%
+            addLegend("bottomright", pal = pal, values = ~cases,
+                      title = "Number of cases",
+                      opacity = 1 )
+```
 
 
 
