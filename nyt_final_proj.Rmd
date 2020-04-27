@@ -11,21 +11,31 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r libraries, include = FALSE}
 library(tidyverse)
+library(broom)
 library(dplyr)
 library(infer)
-library(tidycensus)
 library(ggplot2)
 library(ggthemes)
 library(lubridate)
-library(ggplot2)
 library(leaflet)
 library(rgdal)
+library(dplyr)
+library(sf)
+library(devtools)
+library(urbnmapr)
+library(remotes)
+library(scales)
+library(urbnthemes)
+library(usmap)
+
+set_urbn_defaults(style = "map")
 ```
 
 ```{r reading data}
 state_data <- read.csv("covid-19-data/us-states.csv") 
 county_data <- read.csv('covid-19-data/us-counties.csv')
-
+yes <- state_data %>% 
+        filter(date == latest_date)
 us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
 
 # Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
@@ -48,10 +58,10 @@ state_data <-
 #clean state data so dates are class "date
 county_data <- 
   county_data %>% 
-  mutate(new_date = as_date(date),
-         GEOID = fips) %>% 
-  select(-date, -fips) %>% 
-  mutate(date = new_date)
+  mutate(new_date = as_date(date)) %>% 
+  select(-date) %>% 
+  rename(GEOID = fips, 
+         date = new_date)
   
 ```
 
@@ -59,15 +69,15 @@ county_data <-
 
 latest_date <- county_data %>% 
   filter(state == "Washington") %>% 
-  arrange(desc(new_date)) %>% 
+  arrange(desc(date)) %>% 
   slice(1) %>% 
-  pull(new_date)
+  pull(date)
 
 washington <- county_data %>% 
   filter(state == "Washington", 
-         new_date == latest_date)
+         date == latest_date)
   
-leafmap <- merge(us.map.county, washington, by= 'GEOID')
+leafmap <- merge(us.map.county, county_data, by= 'GEOID', duplicateGeoms = TRUE)
 
 
 popup_dat <- paste0("<strong>State: </strong>",
@@ -87,19 +97,8 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
       addLegend("bottomright", pal = pal, values = ~cases,
                 title = "Number of cases",
                 opacity = 1 )
-#pal <- colorNumeric("RdYlGn", NULL, n = 10)
 
-  #leaflet(washington) %>% 
-  #addTiles() %>%
-      #addPolygons(fillColor = ~pal(cases),
-                  #fillOpacity = 0.8,
-                  #color = "#BDBDC3",
-                  #weight = 1) 
-      #addLegend("bottomright", pal = pal, values = ~change,
-                #title = "Change (%)",
-                #opacity = 1 )
-  
-  #define a color palette ex green-red
+  #Keep in mind when creating a color palette
 #transform values keeping in mind your range is from 0-100000
 #log might be good to change colors or manually define shades 
 #try hotspot states like new jersey or ny 
@@ -112,43 +111,78 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
 ```
 
 ```{r}
-       #find latest date
-        latest_date <- county_data %>% 
-            arrange(desc(date)) %>% 
-            slice(1) %>% 
-            pull(date)
-        
-        #find data for latest date
-        latest_data <- county_data %>% 
-            filter(state == "Alabama", 
-                   date == latest_date)
-        
-        leafmap <- merge(us.map.county, latest_data, by= 'GEOID')
-        
-        
-        popup_dat <- paste0("<strong>State: </strong>",
-                            leafmap$state,
-                            "<br><strong> Number of cases: </strong>",
-                            leafmap$cases)
-        pal <- colorNumeric("RdYlGn", NULL, n = 10)
-        
-        
-        leaflet(data = leafmap) %>% 
-            addTiles() %>%
-            addPolygons(fillColor = ~pal(cases),
-                        fillOpacity = 0.8,
-                        color = "#BDBDC3",
-                        weight = 1,
-                        popup = popup_dat) %>%
-            addLegend("bottomright", pal = pal, values = ~cases,
-                      title = "Number of cases",
-                      opacity = 1 )
+
+
+county_n <- county_data %>% 
+  rename(county_fips = GEOID) %>% 
+  mutate(county_fips = as.character(county_fips)) %>% 
+  filter(state == "Washington", date == latest_date)
+
+household_data <- full_join(county_n, counties, by = "county_fips") 
+
+
+countydata %>% 
+  left_join(counties, by = "county_fips") %>% 
+  filter(state_name =="California") %>% 
+  ggplot(mapping = aes(long, lat, group = group, fill = horate)) +
+  geom_polygon(color = "#ffffff", size = .25) +
+  scale_fill_gradientn(labels = scales::percent,
+                       guide = guide_colorbar(title.position = "top")) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  theme(legend.title = element_text(),
+        legend.key.width = unit(.5, "in")) +
+  labs(fill = "Homeownership rate") +
+  theme_urbn_map()
+
+ggplot() + 
+  geom_polygon(data = urbnmapr::states, mapping = aes(x = long, y = lat, group = group),
+		           fill = "gray", color = "white") +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45)
+```
+
+```{r}
+counties_sf <- get_urbn_map(map = "counties", sf = TRUE)
+
+counties_yes <- counties_sf %>% 
+  filter(state_name == "Washington")
+
+countyiess <- (full_join(counties_yes, county_n, by = "county_fips"))
+
+
+
+states_sf <- get_urbn_map(map = "states", sf = TRUE)
+
+state_data <- left_join(states_sf, statedata, by = "state_name")
+
+ggplot() +
+  geom_sf(data = state_data, mapping = aes(fill = medhhincome))
+ggplot() +
+  geom_sf(data = countyiess, mapping = aes(fill = cases))
 ```
 
 
 
 
 
+
+```{r}
+
+yes <- state_data %>% 
+  filter(date == latest_date)
+
+no <- county_data %>% 
+  filter(date == latest_date, state == "California")
+plot_usmap(data = yes , values = "cases", region =  "counties", size = 0.05) + 
+        theme(panel.background = element_rect(color = "white", fill = "white")) +
+        scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
+        labs(title = paste("Positive Coronavirus Cases in the US")) 
+
+plot_usmap(data = no , values = "cases", region =  "counties", size = 0.05) + 
+        theme(panel.background = element_rect(color = "white", fill = "white")) +
+        scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
+        labs(title = paste("Positive Coronavirus Cases in the US")) 
+options(scipen = 999)
+```
 
 
 
@@ -193,5 +227,6 @@ ggsave(path = "nyt_corona", filename = "washington.png")
 ```{r saving data}
 saveRDS(county_data, file = "nyt_corona/county_data")
 saveRDS(state_data, file = "nyt_corona/state_data")
+saveRDS(yes, file = "nyt_corona/yes")
 ```
 

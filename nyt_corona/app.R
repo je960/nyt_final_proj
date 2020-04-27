@@ -8,13 +8,15 @@ library(ggthemes)
 library(plotly)
 library(leaflet)
 library(shinythemes)
+library(usmap)
+library(widgetframe)
 
 county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
-
+yes_shiny <-readRDS("yes")
 
 ui <- navbarPage(
-    "Coronavirus Cases in the US",
+    tags$b("Coronavirus Cases in the US"),
     
     theme = shinytheme("lumen"),
     
@@ -24,6 +26,9 @@ ui <- navbarPage(
                  titlePanel("Modeling"),
                  sidebarLayout(
                      sidebarPanel(
+                         
+                         HTML('<script> document.title = "COVID-19 In America"; </script>'),
+                         tags$head(tags$link(rel="shortcut icon", href="https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.poynter.org%2Freporting-editing%2F2020%2Fyouve-probably-seen-this-image-of-the-coronavirus-everywhere-what-is-it-exactly%2F&psig=AOvVaw3S076kS4qN7crlMrFUgzGY&ust=1588053753988000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCLDe7rD3h-kCFQAAAAAdAAAAABAD")),
                          
                          p(tags$em("Be careful about the scale.")),
                          
@@ -37,25 +42,48 @@ ui <- navbarPage(
                      
                      #output state plot and death plot
                      mainPanel(
-                        plotlyOutput("stateplot"), 
-                        plotlyOutput("deathplot"),
-                        leafletOutput("mymap"))
+                        plotOutput("yes"), br(),
+                        plotlyOutput("stateplot"), br(), br(),
+                        plotlyOutput("deathplot"))
                      )
                  )
              ),
     
     tabPanel("Discussion",
-             titlePanel("Discussion Title"),
-             p("Tour of the modeling choices you made and 
-              an explanation of why you made them")),
+             titlePanel("Looking Ahead"),
+             
+             imageOutput("image", width = "100%", height = "100%"),
+             p("Image from NYT", align = "center"),
+             h1(tags$b("COVID-19 in America"), align = "center"),
+             p(tags$em("Analysis of COVID-19 Data from NYT"), align = "center"),
+             
+             # Add in a fluidRow to center the main text and graphs on the first page.
+             
+             fluidRow(column(2), column(8, 
+                                        
+                                        # Add in text to introduce and explain the project.
+                                        
+                                        p("I have been parsing through the open NYT database in order to see for myself the impact of the coronavirus in the US.
+                                          The data is meticulously kept by NYT journalists and was updated to reflect numbers as they stand today, Monday April 27th. 
+                                          Though the Shinyapp is a rough draft now, I plan on doing much more with the data"),
+                                        p("Firstly, the rest of the modeling page will feature a breakdown of data by county as well as by state. There will be a more robust US map, where the user can interact and see data by county, not just having a static map.
+                                          I understand just seeing the data isn't enough. You could go to NYT and see a much better version. How do we add insight once we understand, roughly, what the state of the coronavirus in the US is? Move on to tab two!"),
+                                        p("Secondy, I will do analysis on social factors that correlate to the rate of infection in the coronavirus. Using US Census data, I can see what factors best account for high spread in coronavirus or, alternatively, low efficiency in COVID-19 testing. 
+                                          I will look at population density, racial makeup, income, and age. Are there other factors you think I should look at?"),
+                                        p("Thirdly, I will do some analysis on looking at the rate of infection, in order to better visualize the curve the we all seem to be trying to get over."), br(), br(),
+                                        
+                    )
+                )
+
+             ),
     
     tabPanel("About", 
              titlePanel("About"),
              h3("Project Background and Motivations"),
-             p("Hello, this is where I talk about my project."),
+             p("Hello, let me tell you about myself."),
              h3("About Me"),
-             p("My name is ______ and I study ______. 
-             You can reach me at ______@college.harvard.edu."))
+             p("My name is Jerrica Li and I study Comparative Literature. Until about a few days ago, I had no idea what any part of a Shinyapp was. Today you can view this mess I've made in r and Shiny!
+             You can reach me at jerrica_li@college.harvard.edu."))
     )
 
 # Define server logic required to draw a histogram
@@ -112,65 +140,38 @@ server <- function(input, output) {
                  x = "Date", 
                  y = "Confirmed Cases") +
             scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-            geom_area(mapping=aes(x=new_date), fill="firebrick1", alpha=.5) 
+            geom_area(mapping=aes(x=new_date), fill="purple", alpha=.5) 
         
         #render
         c
         })
     
-    #tab one, render heat map of the state
-    output$mymap <- renderLeaflet({
-        
-        #find latest date
-        latest_date <- county_data %>% 
-            arrange(desc(date)) %>% 
-            slice(1) %>% 
-            pull(date)
-        
-        #find data for latest date
-        latest_data <- county_data %>% 
-            filter(state == input$state, 
-                   date == latest_date)
-        
-        leafmap <- merge(us.map.county, latest_data, by= 'GEOID')
-        
-        
-        popup_dat <- paste0("<strong>State: </strong>",
-                            leafmap$state,
-                            "<br><strong> Number of cases: </strong>",
-                            leafmap$cases)
-        pal <- colorNumeric("RdYlGn", NULL, n = 10)
-        
-        
-        leaflet(data = leafmap) %>% 
-            addTiles() %>%
-            addPolygons(fillColor = ~pal(cases),
-                        fillOpacity = 0.8,
-                        color = "#BDBDC3",
-                        weight = 1,
-                        popup = popup_dat) %>%
-            addLegend("bottomright", pal = pal, values = ~cases,
-                      title = "Number of cases",
-                      opacity = 1 )
-    })
- 
-   ## screatch work from pset, rendering pre-saved plots which may be helpful later 
-    output$preImage <- renderImage({
-        
-        
-        
-        # When input$n is 3, filename is ./images/image3.jpeg
-        filename <- normalizePath(file.path('.',
-                                            paste('washington', '.png', sep='')))
-        
-        
+    output$yes <- renderPlot({
+       plot_usmap(data = yes , values = "cases", region =  "counties", size = 0.05) + 
+            theme(panel.background = element_rect(color = "white", fill = "white")) +
+            scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
+            labs(title = paste("Positive Coronavirus Cases in the US"))
+
+    },
+    
+    # Set the best height and width for aesthetic purposes
+    
+    height = 400,
+    width = 800
+    )
+
+    # Load in the image for the top of front page
+    
+    output$image <- renderImage({
         # Return a list containing the filename and alt text
-        list(src = filename,
-             alt = paste("washington.png"), 
-             width = 850, 
-             height = 800)
-        
-    }, deleteFile = FALSE)
+        list(src = './cybor.jpg', 
+             height = 400,
+             width = 550, style="display: block; margin-left: auto; margin-right: auto;")
+    }, deleteFile = FALSE
+    )
+    
+    
+    
 }
 
 
