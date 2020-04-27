@@ -147,7 +147,7 @@ server <- function(input, output) {
         })
     
     output$yes <- renderPlot({
-       plot_usmap(data = yes , values = "cases", region =  "counties", size = 0.05) + 
+       plot_usmap(data = yes_shiny , values = "cases", region =  "counties", size = 0.05) + 
             theme(panel.background = element_rect(color = "white", fill = "white")) +
             scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
             labs(title = paste("Positive Coronavirus Cases in the US"))
