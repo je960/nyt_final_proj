@@ -25,6 +25,7 @@ library(rgdal)
 ```{r reading data}
 state_data <- read.csv("covid-19-data/us-states.csv") 
 county_data <- read.csv('covid-19-data/us-counties.csv')
+
 us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
 
 # Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
@@ -39,15 +40,17 @@ us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("81", "84", "86", "
 
 state_data <- 
   state_data %>% 
-  mutate(new_date = as_date(date)) %>% 
-  select(-date) %>% 
+  mutate(new_date = as_date(date),
+         GEOID = fips) %>% 
+  select(-date, -fips) %>% 
   mutate(date = new_date)
 
 #clean state data so dates are class "date
 county_data <- 
   county_data %>% 
-  mutate(new_date = as_date(date)) %>% 
-  select(-date) %>% 
+  mutate(new_date = as_date(date),
+         GEOID = fips) %>% 
+  select(-date, -fips) %>% 
   mutate(date = new_date)
   
 ```
@@ -64,6 +67,26 @@ washington <- county_data %>%
   filter(state == "Washington", 
          new_date == latest_date)
   
+leafmap <- merge(us.map.county, washington, by= 'GEOID')
+
+
+popup_dat <- paste0("<strong>State: </strong>",
+                    leafmap$state,
+                    "<br><strong> Number of cases: </strong>",
+                    leafmap$cases)
+pal <- colorNumeric("RdYlGn", NULL, n = 10)
+
+
+  leaflet(data = leafmap) %>% 
+      addTiles() %>%
+      addPolygons(fillColor = ~pal(cases),
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1,
+                  popup = popup_dat) %>%
+      addLegend("bottomright", pal = pal, values = ~cases,
+                title = "Number of cases",
+                opacity = 1 )
 #pal <- colorNumeric("RdYlGn", NULL, n = 10)
 
   #leaflet(washington) %>% 
@@ -84,7 +107,7 @@ washington <- county_data %>%
 #try hotspot states like new jersey or ny 
   #try selecting palates based on number of cases 
   #addProviderTiles(provider = "CartoDB.Positron")
-  
+#More things to try:
 #death rates, death rates plotted by county / state and to see is it rural places? urban cities? the south? 
 #by state, see population size over case rate, 
 
