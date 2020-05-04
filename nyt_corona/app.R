@@ -37,14 +37,22 @@ ui <- navbarPage(
                          selectInput(inputId = 'state', 
                                      label = 'Choose a state:', 
                                      choice = levels(state_data_shiny$state)
-                                     )
-                         ),
+                                     ),
+                     br(),br(),
+                     
+                     #ask user to input state
+                     uiOutput("countySelection")
+                 ),
                      
                      #output state plot and death plot
                      mainPanel(
                         plotOutput("yes"), br(),
+                        h1(tags$b("Corona Virus Statistics by State"), align = "center"),
                         plotlyOutput("stateplot"), br(), br(),
-                        plotlyOutput("deathplot"))
+                        plotlyOutput("deathplot"), br(), br(),
+                        h1(tags$b("Corona Statistics by County), align = "center"),
+                        plotlyOutput("countyplot"), br(), br(),
+                        plotlyOutput("countydeath"))
                      )
                  )
              ),
@@ -89,10 +97,19 @@ ui <- navbarPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
-    #tab one, render plot of cases over time
+    #change county input to dynamically change with chosen state
+    #using Ui/uiOutput function to dynamically generate a selectInput
+    
+    output$countySelection <- renderUI({
+        selectInput(inputId = 'county', 
+                    label = 'Choose a county:', 
+                    choice = unique(county_data$county[county_data$state == input$state]))
+    })
+    
+    #model tab, state cases over time plot
     output$stateplot <- renderPlotly({
     
-        title <- "Confirmed coronavirus cases"
+        title <- "Confirmed coronavirus cases by State"
     
         # Filter the dataset based on what state was selected
         choice <- state_data_shiny %>%
@@ -109,13 +126,13 @@ server <- function(input, output) {
                 x = "Date", 
                 y = "Confirmed Cases") +
             scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-            geom_area(mapping=aes(x=new_date), fill="#9898fb", alpha=.5) 
+            geom_area(aes(x=new_date), fill="royalblue2", alpha=.5)
     
         #render
         b
         })
     
-    #tab one, render plot of deaths over time
+    #model tab, state deaths over time plot
     output$deathplot <- renderPlotly({
         
         title <- "Confirmed coronavirus cases"
@@ -131,8 +148,8 @@ server <- function(input, output) {
 
         #Create plot of deaths over time
         c <- ggplot(choice_2, aes(x = date, y = deaths)) +
-            geom_line() +
-            geom_point() + 
+            geom_line(color = "orangered4") +
+            geom_point(color = "orangered4") + 
             theme_minimal() +
             theme(axis.text.x = element_text(angle = 70, hjust = 1), 
                   panel.grid.major = element_blank()) + 
@@ -140,11 +157,66 @@ server <- function(input, output) {
                  x = "Date", 
                  y = "Confirmed Cases") +
             scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-            geom_area(mapping=aes(x=new_date), fill="purple", alpha=.5) 
+            geom_area(aes(x=new_date), fill="orangered2", alpha=.5) 
+            
         
         #render
         c
         })
+    
+    #model tab, county cases over time plot
+    output$countyplot <- renderPlotly({
+        
+        title <- "Confirmed coronavirus cases by county"
+        
+        # Filter the dataset based on what state was selected
+        choice <- county_data_shiny %>%
+            filter(state == input$state,
+                   county == input$county)
+        
+        #Create plot of corona cases over time
+        b <- ggplot(choice, aes(x = date, y = cases)) +
+            geom_line() +
+            geom_point() + 
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = 70, hjust = 1), 
+                  panel.grid.major = element_blank()) + 
+            labs(title =paste("Confirmed Corona Cases for", input$county, sep = " "),  
+                 x = "Date", 
+                 y = "Confirmed Cases") +
+            scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
+            geom_area(aes(x=new_date), fill="royalblue2", alpha=.5)
+        
+        #render
+        b
+    })
+    
+    #model tab, county deaths over time plot
+    output$countydeath <- renderPlotly({
+        
+        title <- "Confirmed coronavirus cases by county"
+        
+        # Filter the dataset based on what state was selected
+        choice <- county_data_shiny %>%
+            filter(state == input$state,
+                   county == input$county)
+        
+        #render plot
+        c <- ggplot(choice, aes(x = date, y = deaths)) +
+            geom_line(color = "orangered4") +
+            geom_point(color = "orangered4") + 
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = 70, hjust = 1), 
+                  panel.grid.major = element_blank()) + 
+            labs(title =paste("Confirmed Deaths by Corona for", input$state, sep = " "),  
+                 x = "Date", 
+                 y = "Confirmed Cases") +
+            scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
+            geom_area(aes(x=new_date), fill="orangered2", alpha=.5)
+        
+        #render
+        c
+    })
     
     output$yes <- renderPlot({
        plot_usmap(data = yes_shiny , values = "cases", region =  "counties", size = 0.05) + 

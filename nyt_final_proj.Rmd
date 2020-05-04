@@ -34,8 +34,8 @@ set_urbn_defaults(style = "map")
 ```{r reading data}
 state_data <- read.csv("covid-19-data/us-states.csv") 
 county_data <- read.csv('covid-19-data/us-counties.csv')
-yes <- state_data %>% 
-        filter(date == latest_date)
+#yes <- state_data %>% 
+        #filter(date == latest_date)
 us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
 
 # Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
@@ -62,7 +62,8 @@ county_data <-
   select(-date) %>% 
   rename(GEOID = fips, 
          date = new_date)
-  
+
+
 ```
 
 ```{r leaflet}
@@ -158,30 +159,6 @@ ggplot() +
   geom_sf(data = state_data, mapping = aes(fill = medhhincome))
 ggplot() +
   geom_sf(data = countyiess, mapping = aes(fill = cases))
-```
-
-
-
-
-
-
-```{r}
-
-yes <- state_data %>% 
-  filter(date == latest_date)
-
-no <- county_data %>% 
-  filter(date == latest_date, state == "California")
-plot_usmap(data = yes , values = "cases", region =  "counties", size = 0.05) + 
-        theme(panel.background = element_rect(color = "white", fill = "white")) +
-        scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
-        labs(title = paste("Positive Coronavirus Cases in the US")) 
-
-plot_usmap(data = no , values = "cases", region =  "counties", size = 0.05) + 
-        theme(panel.background = element_rect(color = "white", fill = "white")) +
-        scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
-        labs(title = paste("Positive Coronavirus Cases in the US")) 
-options(scipen = 999)
 ```
 
 
