@@ -20,6 +20,10 @@ library(lubridate)
 library(dplyr)
 library(tidycensus)
 library(janitor)
+library(sp)
+library(geojsonio)
+library(leaflet)
+library(rgdal)
 ```
 
 ```{r reading data}
@@ -27,13 +31,13 @@ state_data <- read.csv("covid-19-data/us-states.csv")
 county_data <- read.csv('covid-19-data/us-counties.csv')
 #yes <- state_data %>% 
         #filter(date == latest_date)
-#us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
+us.map.state <- readOGR(dsn= 'us_state_map', layer = "cb_2018_us_state_5m", stringsAsFactors = FALSE)
 
 # Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
-#us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("69","64", "68", "70", "74"),]
+us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("69","64", "68", "70", "74"),]
 
 # Make sure other outling islands are removed.
-#us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
+us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
 ```
 
 ```{r cleaning data}
@@ -65,15 +69,18 @@ latest_date <- county_data %>%
   slice(1) %>% 
   pull(date)
 
-washington <- county_data %>% 
-  filter(state == "Washington", 
-         date == latest_date)
-  
-leafmap <- merge(us.map.county, county_data, by= 'GEOID', duplicateGeoms = TRUE)
+state_latest <- state_data %>% 
+  filter(date == latest_date) %>% 
+  mutate(GEOID = as.character(GEOID), 
+         state = as.character(state)) %>% 
+  select(GEOID, cases, state)
 
+leafmap <- merge(us.map.state, state_latest, by.x = "NAME", by.y = "state")
+
+glimpse(us.map.state)
 
 popup_dat <- paste0("<strong>State: </strong>",
-                    leafmap$state,
+                    leafmap$NAME,
                     "<br><strong> Number of cases: </strong>",
                     leafmap$cases)
 pal <- colorNumeric("RdYlGn", NULL, n = 10)
@@ -90,7 +97,6 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
                 title = "Number of cases",
                 opacity = 1 )
 
-  #Keep in mind when creating a color palette
 #transform values keeping in mind your range is from 0-100000
 #log might be good to change colors or manually define shades 
 #try hotspot states like new jersey or ny 
@@ -102,57 +108,11 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
 
 ```
 
-```{r}
-
-
-county_n <- county_data %>% 
-  rename(county_fips = GEOID) %>% 
-  mutate(county_fips = as.character(county_fips)) %>% 
-  filter(state == "Washington", date == latest_date)
-
-household_data <- full_join(county_n, counties, by = "county_fips") 
-
-
-countydata %>% 
-  left_join(counties, by = "county_fips") %>% 
-  filter(state_name =="California") %>% 
-  ggplot(mapping = aes(long, lat, group = group, fill = horate)) +
-  geom_polygon(color = "#ffffff", size = .25) +
-  scale_fill_gradientn(labels = scales::percent,
-                       guide = guide_colorbar(title.position = "top")) +
-  coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
-  theme(legend.title = element_text(),
-        legend.key.width = unit(.5, "in")) +
-  labs(fill = "Homeownership rate") +
-  theme_urbn_map()
-
-ggplot() + 
-  geom_polygon(data = urbnmapr::states, mapping = aes(x = long, y = lat, group = group),
-		           fill = "gray", color = "white") +
-  coord_map(projection = "albers", lat0 = 39, lat1 = 45)
-```
 
 ```{r}
-counties_sf <- get_urbn_map(map = "counties", sf = TRUE)
-
-counties_yes <- counties_sf %>% 
-  filter(state_name == "Washington")
-
-countyiess <- (full_join(counties_yes, county_n, by = "county_fips"))
-
-
-
-states_sf <- get_urbn_map(map = "states", sf = TRUE)
-
-state_data <- left_join(states_sf, statedata, by = "state_name")
-
-ggplot() +
-  geom_sf(data = state_data, mapping = aes(fill = medhhincome))
-ggplot() +
-  geom_sf(data = countyiess, mapping = aes(fill = cases))
+state_data %>% 
+  filter(date == latest_date) 
 ```
-
-
 
 ```{r tab three change in cases over time}
 
@@ -198,16 +158,14 @@ counties_map <- get_acs(geography = "county",
           name, 
           "pop" = estimate,
           geometry) %>% 
-  separate(col = name, c("county", "state"), sep = ", ")
+  separate(col = name, c("county", "state"), sep = ", ") 
 
 options(tigris_use_cache = TRUE)
 
 county_latest <- county_data %>% 
-  filter(date == latest_date) %>% 
-  mutate(county = as.character(county))
-county_latest %>% filter(state == "California")
-counties_map %>% filter(state == "California")
+  filter(date == latest_date)
 
+countes
 #2,820 rows
 glimpse(county_latest)
 
@@ -221,36 +179,60 @@ county_map_data <- counties_map %>%
   left_join(county_latest, by = "geoid") %>% 
     select(geoid, 
          "county" = county.x,
-         "state" = state.y,
+         "state" = state.x,
          date, 
          cases, 
          deaths, 
          geometry)
-glimpse(merge_test)
+glimpse(county_map_data)
 
-merge_test %>% filter(state == "California")
-
-merged <- merge(county_latest, counties_map, by = "geoid") %>% 
-  select(geoid, 
-         "county" = county.x,
-         "state" = state.y,
-         date, 
-         cases, 
-         deaths, 
-         geometry)
-merged %>% filter(state == "California")
 ```
 
 ```{r}
-        merge_test %>% filter(state == "California")
+        county_map_data %>% filter(state == "California") %>%
             ggplot(map = aes(fill = cases, geometry = geometry)) +
-            geom_sf(data = merge_test) + 
+            geom_sf(data = county_map_data) + 
             scale_fill_viridis_c(option = "plasma") + 
             labs(caption = "Sources: The New York Times and the American Community Survey 2014-2018", 
                  fill = "Total Cases") + 
             theme_void()
-
 ```
+
+```{r}
+us_states <- geojsonio::geojson_read("state_map.json", what = "sp")
+
+plot(us_map_state)
+m <- leaflet(states) %>%
+  setView(-96, 37.8, 4) %>%
+  addTiles() 
+
+
+leaflet(us.map.state)%>%
+  setView(-96, 37.8, 4) %>%
+  addTiles() 
+
+pal <- colorNumeric("RdYlGn", NULL, n = 10)
+
+m %>% 
+  addPolygons()fillColor = cases,
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1)
+
+  leaflet(data = leafmap) %>% 
+      addTiles() %>%
+      addPolygons(fillColor = ~pal(cases),
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1,
+                  popup = popup_dat) %>%
+      addLegend("bottomright", pal = pal, values = ~cases,
+                title = "Number of cases",
+                opacity = 1 )
+  
+m %>% addPolygons()
+```
+
 
 ```{r ggsave, include = FALSE}
 ggsave(path = "nyt_corona", filename = "washington.png")
@@ -260,11 +242,11 @@ ggsave(path = "nyt_corona", filename = "washington.png")
 saveRDS(county_data, file = "nyt_corona/county_data")
 saveRDS(state_data, file = "nyt_corona/state_data")
 saveRDS(yes, file = "nyt_corona/yes")
-saveRDS(merge, file = "FinalProjectV1.0/county_data.rds")
+saveRDS(county_map_data, file = "nyt_corona/county_map_data.rds")
 ```
 
 ```{r}
-#ist of online resources I looked at 
+#list of online resources I looked at 
 # # https://stackoverflow.com/questions/1330989/rotating-and-spacing-axis-labels-in-ggplot2
 ```
 

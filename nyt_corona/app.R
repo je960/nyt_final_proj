@@ -15,6 +15,7 @@ library(viridis)
 county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
 yes_shiny <-readRDS("yes")
+county_map_data <- readRDS("county_map_data.rds")
 
 # Census API Key
 
@@ -247,25 +248,14 @@ server <- function(input, output) {
     })
     
     output$yes <- renderPlot({
-        #Require state selected or else error
-        req(input$select_state)
         
         #filter county data
-        x <- filter(county_data_shiny, state == input$state)
-        
-        #find latest date
-        latest_date <- x %>% 
-            arrange(desc(date)) %>% 
-            slice(1) %>% 
-            pull(date)
-        
-        #only pull latest date
-        z <- filter(x, date == latest_date) 
-        
+        x <- filter(county_map_data, state == input$state)
+
         #nice
-        z %>%
+        x %>%
             ggplot(map = aes(fill = cases, geometry = geometry)) +
-            geom_sf(data = z) + 
+            geom_sf(data = x) + 
             scale_fill_viridis_c(option = "plasma") + 
             labs(caption = "Sources: The New York Times and the American Community Survey 2014-2018", 
                  fill = "Total Cases") + 
