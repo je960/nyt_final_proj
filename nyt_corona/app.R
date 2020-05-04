@@ -8,12 +8,17 @@ library(ggthemes)
 library(plotly)
 library(leaflet)
 library(shinythemes)
-library(usmap)
-library(widgetframe)
+library(gganimate)
+library(tidycensus)
+library(viridis)
 
 county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
 yes_shiny <-readRDS("yes")
+
+# Census API Key
+
+Sys.getenv("CENSUS_API_KEY")
 
 ui <- navbarPage(
     tags$b("Coronavirus Cases in the US"),
@@ -46,16 +51,37 @@ ui <- navbarPage(
                      
                      #output state plot and death plot
                      mainPanel(
-                        plotOutput("yes"), br(),
+                        plotOutput("yes"), br(),br(),
                         h1(tags$b("Corona Virus Statistics by State"), align = "center"),
                         plotlyOutput("stateplot"), br(), br(),
-                        plotlyOutput("deathplot"), br(), br(),
-                        h1(tags$b("Corona Statistics by County), align = "center"),
+                        plotlyOutput("deathplot"), br(), br(), br(), br(), br(), br(),
+                        h1(tags$b("Corona Statistics by County"), align = "center"),
                         plotlyOutput("countyplot"), br(), br(),
                         plotlyOutput("countydeath"))
                      )
                  )
              ),
+    
+    tabPanel("Logarithmic Functions",
+            titlePanel("Modeling with Logarithmic Functions"),
+                    sidebarLayout(
+                        sidebarPanel(
+            
+                            p(tags$em("Be careful about the scale.")),
+                            
+                            #ask user to input state
+                            
+                            selectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE,
+                            options = list(maxItems = 10, placeholder = "States")),
+                            br(),br(),
+
+                            ),
+    
+                        mainPanel(
+                            plotlyOutput("logplot")
+                        )
+                      )
+            ),
     
     tabPanel("Discussion",
              titlePanel("Looking Ahead"),
@@ -96,6 +122,8 @@ ui <- navbarPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    #updateSelectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = data, server = TRUE)
     
     #change county input to dynamically change with chosen state
     #using Ui/uiOutput function to dynamically generate a selectInput
@@ -219,18 +247,61 @@ server <- function(input, output) {
     })
     
     output$yes <- renderPlot({
-       plot_usmap(data = yes_shiny , values = "cases", region =  "counties", size = 0.05) + 
-            theme(panel.background = element_rect(color = "white", fill = "white")) +
-            scale_fill_continuous(low = "white", high = "blue4", name = "Positive Cases") +
-            labs(title = paste("Positive Coronavirus Cases in the US"))
+        #Require state selected or else error
+        req(input$select_state)
+        
+        #filter county data
+        x <- filter(county_data_shiny, state == input$state)
+        
+        #find latest date
+        latest_date <- x %>% 
+            arrange(desc(date)) %>% 
+            slice(1) %>% 
+            pull(date)
+        
+        #only pull latest date
+        z <- filter(x, date == latest_date) 
+        
+        #nice
+        z %>%
+            ggplot(map = aes(fill = cases, geometry = geometry)) +
+            geom_sf(data = z) + 
+            scale_fill_viridis_c(option = "plasma") + 
+            labs(caption = "Sources: The New York Times and the American Community Survey 2014-2018", 
+                 fill = "Total Cases") + 
+            theme_void()
 
-    },
+    })
     
-    # Set the best height and width for aesthetic purposes
-    
-    height = 400,
-    width = 800
-    )
+    #model tab, county cases over time plot
+    output$logplot <- renderPlotly({
+        
+
+        # Filter the dataset based on what state was selected
+        choice_1 <- state_data_shiny %>%
+            filter(state == input$selectize[1])
+        
+        choice_two <- state_data_shiny %>%
+            filter(state == input$selectize[2])
+        
+        #Create plot of corona cases over time
+        b <- ggplot(choice_1, aes(x = date, y = cases)) +
+            geom_line() +
+            geom_point() + 
+            geom_line(data = choice_two, aes(x = date, y = cases)) +
+            geom_point(data = choice_two, aes(x = date, y = cases)) +
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = 70, hjust = 1), 
+                  panel.grid.major = element_blank()) + 
+            labs(title =paste("Confirmed Corona Cases"),  
+                 x = "Date", 
+                 y = "Confirmed Cases") +
+            scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
+            geom_area(aes(x=new_date), fill="royalblue2", alpha=.5)
+        
+        #render
+        b
+    })
 
     # Load in the image for the top of front page
     

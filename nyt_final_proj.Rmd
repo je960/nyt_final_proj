@@ -17,18 +17,9 @@ library(infer)
 library(ggplot2)
 library(ggthemes)
 library(lubridate)
-library(leaflet)
-library(rgdal)
 library(dplyr)
-library(sf)
-library(devtools)
-library(urbnmapr)
-library(remotes)
-library(scales)
-library(urbnthemes)
-library(usmap)
-
-set_urbn_defaults(style = "map")
+library(tidycensus)
+library(janitor)
 ```
 
 ```{r reading data}
@@ -36,13 +27,13 @@ state_data <- read.csv("covid-19-data/us-states.csv")
 county_data <- read.csv('covid-19-data/us-counties.csv')
 #yes <- state_data %>% 
         #filter(date == latest_date)
-us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
+#us.map.county <- readOGR(dsn= 'cb_2018_us_county_500k', layer = "cb_2018_us_county_500k", stringsAsFactors = FALSE)
 
 # Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
-us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("69","64", "68", "70", "74"),]
+#us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("69","64", "68", "70", "74"),]
 
 # Make sure other outling islands are removed.
-us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
+#us.map.county <- us.map.county[!us.map.county$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
 ```
 
 ```{r cleaning data}
@@ -58,12 +49,12 @@ state_data <-
 #clean state data so dates are class "date
 county_data <- 
   county_data %>% 
-  mutate(new_date = as_date(date)) %>% 
-  select(-date) %>% 
-  rename(GEOID = fips, 
-         date = new_date)
+  mutate(new_date = as_date(date),
+         geoid = as.character(fips)) %>% 
+  select(-date, -fips) %>% 
+  rename(date = new_date)
 
-
+glimpse(county_data)
 ```
 
 ```{r leaflet}
@@ -182,7 +173,7 @@ ggplot(wash, aes(x = new_date, y = cases)) +
   geom_line() +
   geom_point() + 
   theme_minimal() +
- # https://stackoverflow.com/questions/1330989/rotating-and-spacing-axis-labels-in-ggplot2
+
   theme(axis.text.x = element_text(angle = 70, hjust = 1), 
         panel.grid.major = element_blank()) + 
   labs(title = "Confirmed Corona Cases by State (Washington)", 
@@ -197,6 +188,70 @@ ggplot(wash, aes(x = new_date, y = cases)) +
 
 ```
 
+```{r}
+counties_map <- get_acs(geography = "county",
+                  variables = c(pop = "B00001_001"), 
+                  year = 2018,
+                  geometry = TRUE) %>% 
+  clean_names() %>% 
+   select(geoid, 
+          name, 
+          "pop" = estimate,
+          geometry) %>% 
+  separate(col = name, c("county", "state"), sep = ", ")
+
+options(tigris_use_cache = TRUE)
+
+county_latest <- county_data %>% 
+  filter(date == latest_date) %>% 
+  mutate(county = as.character(county))
+county_latest %>% filter(state == "California")
+counties_map %>% filter(state == "California")
+
+#2,820 rows
+glimpse(county_latest)
+
+#3,220 rows
+glimpse(counties_map)
+
+#2,508 rows
+glimpse(merged)
+
+county_map_data <- counties_map %>% 
+  left_join(county_latest, by = "geoid") %>% 
+    select(geoid, 
+         "county" = county.x,
+         "state" = state.y,
+         date, 
+         cases, 
+         deaths, 
+         geometry)
+glimpse(merge_test)
+
+merge_test %>% filter(state == "California")
+
+merged <- merge(county_latest, counties_map, by = "geoid") %>% 
+  select(geoid, 
+         "county" = county.x,
+         "state" = state.y,
+         date, 
+         cases, 
+         deaths, 
+         geometry)
+merged %>% filter(state == "California")
+```
+
+```{r}
+        merge_test %>% filter(state == "California")
+            ggplot(map = aes(fill = cases, geometry = geometry)) +
+            geom_sf(data = merge_test) + 
+            scale_fill_viridis_c(option = "plasma") + 
+            labs(caption = "Sources: The New York Times and the American Community Survey 2014-2018", 
+                 fill = "Total Cases") + 
+            theme_void()
+
+```
+
 ```{r ggsave, include = FALSE}
 ggsave(path = "nyt_corona", filename = "washington.png")
 ```
@@ -205,5 +260,11 @@ ggsave(path = "nyt_corona", filename = "washington.png")
 saveRDS(county_data, file = "nyt_corona/county_data")
 saveRDS(state_data, file = "nyt_corona/state_data")
 saveRDS(yes, file = "nyt_corona/yes")
+saveRDS(merge, file = "FinalProjectV1.0/county_data.rds")
+```
+
+```{r}
+#ist of online resources I looked at 
+# # https://stackoverflow.com/questions/1330989/rotating-and-spacing-axis-labels-in-ggplot2
 ```
 
