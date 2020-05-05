@@ -33,6 +33,8 @@ county_data <- read.csv('covid-19-data/us-counties.csv')
         #filter(date == latest_date)
 testing <- read.csv("covid-19-data/current.csv")
 
+test_history <- read.csv("covid-19-data/test_historical.csv")
+
 us.map.state <- readOGR(dsn= 'us_state_map', layer = "cb_2018_us_state_5m", stringsAsFactors = FALSE)
 
 us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("69","64", "68", "70", "74"),]
@@ -43,6 +45,7 @@ us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("81", "84", "86", "87"
 
 ```{r cleaning data}
 
+#clean testing data so names are right
 test_clean <- testing %>% 
   clean_names() %>%
   rename(GEOID = fips,
@@ -55,8 +58,14 @@ test_clean <- testing %>%
          negative_test,
          total_test) 
 
-#clean state data so dates are class "date
+#clean test_history so dates are class date
+test_history <- test_history %>% 
+  mutate(date = ymd(date)) %>%
+  clean_names() %>%
+  select(-total, 
+         -pos_neg)
 
+#clean state data so dates are class "date
 state_data <- 
   state_data %>% 
   mutate(new_date = as_date(date),
@@ -72,6 +81,39 @@ county_data <-
   select(-date, -fips) %>% 
   rename(date = new_date)
 
+```
+
+```{r wrangling test_history}
+glimpse(test_hist_3)
+
+test_hist_3 <- test_history %>%
+  mutate(perc_pos = positive/total_test_results) %>%
+  filter(state %in% c("NY", "NJ", "MA"))
+
+pop_3 <- population %>% 
+  filter(
+    NAME %in% c("New York", "New Jersey", "Massachusetts"), 
+    variable == "POP"
+    ) %>%
+  rename(pop = "value",
+         state = "NAME") %>%
+  select(-variable)
+
+pop_3[1, "state"] <- "MA"
+pop_3[2, "state"] <- "NJ"
+pop_3[3, "state"] <- "NY"
+
+
+omg <- test_hist_3 %>% 
+  left_join(pop_3, by = "state") %>%
+  mutate(people_per_test = (total_test_results/pop), 
+         state = as.factor(state)) %>% 
+  select(state, perc_pos, people_per_test)
+
+omg %>%
+  ggplot(aes(x = people_per_test, y = perc_pos)) + 
+  geom_point() +
+  theme_minimal()
 ```
 
 ```{r wrangle for clean testing data}
