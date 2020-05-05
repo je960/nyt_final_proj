@@ -21,9 +21,9 @@ library(dplyr)
 library(tidycensus)
 library(janitor)
 library(sp)
-library(geojsonio)
 library(leaflet)
 library(rgdal)
+library(googlesheets)
 ```
 
 ```{r reading data}
@@ -31,16 +31,30 @@ state_data <- read.csv("covid-19-data/us-states.csv")
 county_data <- read.csv('covid-19-data/us-counties.csv')
 #yes <- state_data %>% 
         #filter(date == latest_date)
+testing <- read.csv("covid-19-data/current.csv")
+
 us.map.state <- readOGR(dsn= 'us_state_map', layer = "cb_2018_us_state_5m", stringsAsFactors = FALSE)
 
-# Remove Mariana Islands (69), Micronesia (64), Marshall Islands (68), Palau (70), Minor Islands (74)
 us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("69","64", "68", "70", "74"),]
 
-# Make sure other outling islands are removed.
 us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
+
 ```
 
 ```{r cleaning data}
+
+test_clean <- testing %>% 
+  clean_names() %>%
+  rename(GEOID = fips,
+         positive_test = positive, 
+         negative_test = negative, 
+         total_test = total_test_results) %>%
+  select(state,
+         GEOID,
+         positive_test,
+         negative_test,
+         total_test) 
+
 #clean state data so dates are class "date
 
 state_data <- 
@@ -58,7 +72,64 @@ county_data <-
   select(-date, -fips) %>% 
   rename(date = new_date)
 
-glimpse(county_data)
+```
+
+```{r wrangle for clean testing data}
+state_latest_yes <- state_data %>% 
+  filter(date == latest_date)
+
+joined_test <- test_clean %>% 
+  full_join(state_latest_yes, by = "GEOID") %>% 
+  rename(state = state.y) %>% 
+  select(
+    -state.x,
+    -new_date,
+    -date
+         )
+
+
+joined_test <- joined_test 
+
+population <- get_estimates(geography = "state",
+                            product = "population")
+
+pop <- population %>%
+  rename(state = NAME, 
+         population = value) %>% 
+  mutate(GEOID = as.integer(GEOID)) %>%
+  select(-variable) 
+
+popu = pop[1:52,]
+
+testing_full <- joined_test %>%
+  full_join(popu, by = "GEOID") %>% 
+  filter(!is.na(state.y)) %>% 
+  rename(state = state.x)
+
+```
+
+```{r data wrangling with testing dataset}
+test <- testing_full %>%
+  select(-state.y) %>%
+  mutate(people_per_test = (population/total_test)) %>%
+  mutate(perc_positive = (positive_test/total_test)) %>%
+  mutate(trouble = (perc_positive * people_per_test))
+
+map <- merge(us.map.state, test, by.x = "NAME", by.y = "state")
+
+  leaflet(data = map) %>% 
+      addTiles() %>%
+    setView(-96, 37.8, 4) %>%
+      addPolygons(fillColor = ~pal(trouble),
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1,
+                  popup = popup_dat) %>%
+      addLegend("bottomright", pal = pal, values = ~trouble,
+                title = "Trouble Index",
+                opacity = 1 )
+
+
 ```
 
 ```{r leaflet}
