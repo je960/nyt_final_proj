@@ -9,35 +9,95 @@ library(plotly)
 library(leaflet)
 library(shinythemes)
 library(gganimate)
-library(tidycensus)
-library(viridis)
 
 county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
-yes_shiny <-readRDS("yes")
 county_map_data <- readRDS("county_map_data.rds")
 leafletmap_shiny <- readRDS("leafmap.rds")
 
-# Census API Key
-
-Sys.getenv("CENSUS_API_KEY")
 
 ui <- navbarPage(
     tags$b("Coronavirus Upclose"),
     
     theme = shinytheme("journal"),
     
-    #first tab shows coronavirus cases over time
-    tabPanel("Model",
+    #Project Panel
+    tabPanel("The Project",
+             
+             tabsetPanel(
+                 
+             #first Project tab, Overview
+             tabPanel("Overview",
+             
+             imageOutput("image", width = "100%", height = "100%"),
+             
+             p("Image from NYT", align = "center"),
+             
+             h1(tags$b("The State of COVID-19"), align = "center"),
+             
+             p(tags$em("On the day I am writing this, Wednesday May 6th, the headlines of major US news are:"), align = "center"),
+
+             imageOutput("headline", width = "100%", height = "100%"),
+             
+             # Add in a fluidRow to center the main text and graphs on the first page.
+             fluidRow(column(2), column(8, 
+                                        p("These headlines are a snapshot of the fear carried along with the spread of the coronavirus - ramifications that impact the public health, economy, and sanity of the US. Looking to our hospitals, the US alone currently 
+                                          has over 1.2 million confirmed cases of COVID-19 and over 70,000 deaths reported deaths from the virus. Looking to our streets, cities, and states, most of the country, about 214 million people or ~ 65 % of the population, is in lockdown to prevent further spread of the virus."),
+                                        p("Unemployment statistics which come out on Friday are expected to show unemployment rose to about 16.1% and a loss of over 22 million nonfarm payroll jobs. That is the same as eliminating every new job created in the last decade."),
+                                        p("The COVID-19 pandemic exceeds the scope and imagination of so many, especially when distorted by misinformation in the media, by the President. This project aims to visualize the spread of COVID-19 in the US to the county level with data from the NYT."),
+                                        p("For more information about the sources please see the next tab, “Data Sources”. "), br(), br(),
+                                        )
+                    )),
+            #second Project tab, Data Sources
+            tabPanel("Credits",
+                     
+                     h1(tags$b("Data Sources"), align = "center"),
+                     
+                     fluidRow(column(2), column(8, 
+                                                p("State and county data coronavirus counts and deaths are from the meticulously kept NYT database. (John Hopkins Coronavirus Resource Center also has robust international counts)"),
+                                                p(a(href="https://www.nytimes.com/article/coronavirus-county-data-us.html", "Find it here.")),
+                                                br(),
+                                                p("State testing counts are from the Covid Tracking Project under The Atlantic."),
+                                                p(a(href="https://covidtracking.com/data", "Find it here.")),
+                                                br(),
+                                                p("Mapping was done with shapefiles from the US Census Bureau."),
+                                                p(a(href="https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html", "Find it here.")),
+                            ))
+            ),
+            
+            #third Project tab, Data Sources
+            tabPanel("About Me",
+                     titlePanel("Jerrica Li"), 
+                     
+                             #body text 
+                             imageOutput("jerrica", width = "100%", height = "100%"),
+                             h1(tags$b("I am a junior studying data science at Harvard University."), align = "center"),
+                             fluidRow(column(2), column(8, 
+                                                        p("I major in Comparative Literature, though I also have academic interests in data science and visualization, US immigration and immigrant rights especially within the Boston Chinese community, and using technology as tools for education."),
+                                                        p("This Shiny app is the final project for the course Government 1005: Data and my first ever! The topic is personal, as it is with everyone in a world affected by the pandemic. On Tuesday, March 10th, 2020, Harvard College students were forced to move out of campus within 5 days. 
+                                                          The campus was in mayhem, heightened with chaos, confusion, denial, and reckoning with the severity of COVID-19. So in some ways, this project is as much for the viewers of the app as it is for me personally to process the effects of the pandemic and explore where 
+                                                          the US can continue to improve its handling of this epidemic."),
+                                                        br(),
+                                                        p("You can find me at:"),
+                                                        p(a(href="mailto:jerrica_li@college.harvard.edu?Subject=Hello!", "My college email")),
+                                                        p(a(href="https://github.com/je960", "My Github account")),
+                                                        p(a(href="https://www.linkedin.com/in/jerrica-li/", "My LinkedIn account"))
+                             ))
+                    )
+            )
+            ),
+    
+    #State Data panel
+    tabPanel("State Data",
              fluidPage(
-                 titlePanel("Modeling"),
+                 titlePanel("Modeling the Pandemic"),
                  sidebarLayout(
                      sidebarPanel(
                          
                          HTML('<script> document.title = "COVID-19 In America"; </script>'),
                          tags$head(tags$link(rel="shortcut icon", href="https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.poynter.org%2Freporting-editing%2F2020%2Fyouve-probably-seen-this-image-of-the-coronavirus-everywhere-what-is-it-exactly%2F&psig=AOvVaw3S076kS4qN7crlMrFUgzGY&ust=1588053753988000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCLDe7rD3h-kCFQAAAAAdAAAAABAD")),
                          
-                         p(tags$em("Be careful about the scale.")),
+                         p(tags$em("Be aware of the fitted scale.")),
                          
                          #ask user to input state
                          
@@ -53,7 +113,6 @@ ui <- navbarPage(
                      
                      #output state plot and death plot
                      mainPanel(
-                        leafletOutput("mymap"), br(),br(),
                         h1(tags$b("Corona Virus Statistics by State"), align = "center"),
                         plotlyOutput("stateplot"), br(), br(),
                         plotlyOutput("deathplot"), br(), br(), br(), br(), br(), br(),
@@ -85,58 +144,43 @@ ui <- navbarPage(
                       )
             ),
     
-    tabPanel("Discussion",
-             titlePanel("Looking Ahead"),
-             
-             imageOutput("image", width = "100%", height = "100%"),
-             p("Image from NYT", align = "center"),
-             h1(tags$b("COVID-19 in America"), align = "center"),
-             p(tags$em("Analysis of COVID-19 Data from NYT"), align = "center"),
-             
-             # Add in a fluidRow to center the main text and graphs on the first page.
-             
-             fluidRow(column(2), column(8, 
-                                        
-                                        # Add in text to introduce and explain the project.
-                                        
-                                        p("I have been parsing through the open NYT database in order to see for myself the impact of the coronavirus in the US.
-                                          The data is meticulously kept by NYT journalists and was updated to reflect numbers as they stand today, Monday April 27th. 
-                                          Though the Shinyapp is a rough draft now, I plan on doing much more with the data"),
-                                        p("Firstly, the rest of the modeling page will feature a breakdown of data by county as well as by state. There will be a more robust US map, where the user can interact and see data by county, not just having a static map.
-                                          I understand just seeing the data isn't enough. You could go to NYT and see a much better version. How do we add insight once we understand, roughly, what the state of the coronavirus in the US is? Move on to tab two!"),
-                                        p("Secondy, I will do analysis on social factors that correlate to the rate of infection in the coronavirus. Using US Census data, I can see what factors best account for high spread in coronavirus or, alternatively, low efficiency in COVID-19 testing. 
-                                          I will look at population density, racial makeup, income, and age. Are there other factors you think I should look at?"),
-                                        p("Thirdly, I will do some analysis on looking at the rate of infection, in order to better visualize the curve the we all seem to be trying to get over."), br(), br(),
-                                        
-                    )
+   
+    tabPanel("State Maps", 
+             titlePanel("Mapping the Pandemic"),
+             sidebarLayout(
+                sidebarPanel(
+                    p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
+                                in the US, so many states may be underreporting their numbers. Hover over each state for a quick look, or click on each state.")),
+                    p(tags$bold("Choose a variable:")),
+                ),
+                mainPanel(
+                    leafletOutput("state_map")
                 )
-
-             ),
-    
-    tabPanel("About", 
-             titlePanel("About"),
-             h3("Project Background and Motivations"),
-             p("Hello, let me tell you about myself."),
-             h3("About Me"),
-             p("My name is Jerrica Li and I study Comparative Literature. Until about a few days ago, I had no idea what any part of a Shinyapp was. Today you can view this mess I've made in r and Shiny!
-             You can reach me at jerrica_li@college.harvard.edu."))
+             )
     )
+)
+
+
+
+
+
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
     #updateSelectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = data, server = TRUE)
     
+    #State data tab, county
     #change county input to dynamically change with chosen state
     #using Ui/uiOutput function to dynamically generate a selectInput
-    
     output$countySelection <- renderUI({
         selectInput(inputId = 'county', 
                     label = 'Choose a county:', 
                     choice = unique(county_data$county[county_data$state == input$state]))
     })
     
-    #model tab, state cases over time plot
+    
+    #State data tab, state cases over time plot
     output$stateplot <- renderPlotly({
     
         title <- "Confirmed coronavirus cases by State"
@@ -162,7 +206,7 @@ server <- function(input, output) {
         b
         })
     
-    #model tab, state deaths over time plot
+    #State data tab, state deaths over time plot
     output$deathplot <- renderPlotly({
         
         title <- "Confirmed coronavirus cases"
@@ -194,7 +238,7 @@ server <- function(input, output) {
         c
         })
     
-    #model tab, county cases over time plot
+    #State Data tab, county cases over time plot
     output$countyplot <- renderPlotly({
         
         title <- "Confirmed coronavirus cases by county"
@@ -221,7 +265,7 @@ server <- function(input, output) {
         b
     })
     
-    #model tab, county deaths over time plot
+    #State tab, county deaths over time plot
     output$countydeath <- renderPlotly({
         
         title <- "Confirmed coronavirus cases by county"
@@ -248,7 +292,8 @@ server <- function(input, output) {
         c
     })
     
-    output$mymap <- renderLeaflet({
+    #State Maps Panel, cases 
+    output$state_cases <- renderLeaflet({
         
         pal <- colorNumeric("YlOrRd", NULL, n = 10)
         
@@ -275,7 +320,7 @@ server <- function(input, output) {
 
     })
     
-    #model tab, county cases over time plot
+    #Logarithmic Panel, county cases over time plot
     output$logplot <- renderPlotly({
         
 
@@ -305,8 +350,8 @@ server <- function(input, output) {
         b
     })
 
-    # Load in the image for the top of front page
     
+    # Project panel, Overview tab, COVID-19 NYT Illustration
     output$image <- renderImage({
         # Return a list containing the filename and alt text
         list(src = './cybor.jpg', 
@@ -316,7 +361,24 @@ server <- function(input, output) {
     )
     
     
+    # Project panel, Overview tab, newspaper headline image
+    output$headline <- renderImage({
+        # Return a list containing the filename and alt text
+        list(src = './headline.png', 
+             height = 700,
+             width = 600, style="display: block; margin-left: auto; margin-right: auto;")
+    }, deleteFile = FALSE
+    )
     
+    
+    # Project panel, About Me tab, bio photo
+    output$jerrica <- renderImage({
+        # Return a list containing the filename and alt text
+        list(src = './jerrica.jpg', 
+             height = 400,
+             width = 300, style="display: block; margin-left: auto; margin-right: auto;")
+    }, deleteFile = FALSE
+    )
 }
 
 
