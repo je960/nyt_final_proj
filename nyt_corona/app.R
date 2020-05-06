@@ -23,9 +23,9 @@ leafletmap_shiny <- readRDS("leafmap.rds")
 Sys.getenv("CENSUS_API_KEY")
 
 ui <- navbarPage(
-    tags$b("Coronavirus Cases in the US"),
+    tags$b("Coronavirus Upclose"),
     
-    theme = shinytheme("lumen"),
+    theme = shinytheme("journal"),
     
     #first tab shows coronavirus cases over time
     tabPanel("Model",
