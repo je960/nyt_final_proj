@@ -16,6 +16,7 @@ county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
 yes_shiny <-readRDS("yes")
 county_map_data <- readRDS("county_map_data.rds")
+leafletmap_shiny <- readRDS("leafmap.rds")
 
 # Census API Key
 
@@ -52,7 +53,7 @@ ui <- navbarPage(
                      
                      #output state plot and death plot
                      mainPanel(
-                        plotOutput("yes"), br(),br(),
+                        leafletOutput("mymap"), br(),br(),
                         h1(tags$b("Corona Virus Statistics by State"), align = "center"),
                         plotlyOutput("stateplot"), br(), br(),
                         plotlyOutput("deathplot"), br(), br(), br(), br(), br(), br(),
@@ -247,19 +248,30 @@ server <- function(input, output) {
         c
     })
     
-    output$yes <- renderPlot({
+    output$mymap <- renderLeaflet({
         
-        #filter county data
-        x <- filter(county_map_data, state == input$state)
-
-        #nice
-        x %>%
-            ggplot(map = aes(fill = cases, geometry = geometry)) +
-            geom_sf(data = x) + 
-            scale_fill_viridis_c(option = "plasma") + 
-            labs(caption = "Sources: The New York Times and the American Community Survey 2014-2018", 
-                 fill = "Total Cases") + 
-            theme_void()
+        pal <- colorNumeric("YlOrRd", NULL, n = 10)
+        
+        labels <- sprintf(
+            "%s<br/>%g cases",
+            leafmap$NAME, leafmap$cases
+        ) %>% lapply(htmltools::HTML)
+        
+        leaflet(data = leafmap) %>% 
+            addTiles() %>%
+            setView(-96, 37.8, 4) %>%
+            addPolygons(fillColor = ~pal(cases),
+                        fillOpacity = 0.8,
+                        color = "#BDBDC3",
+                        weight = 1,
+                        popup = popup_dat,
+                        label = labels,
+                        labelOptions = labelOptions(
+                            textsize = "15px",
+                            direction = "auto")) %>%
+            addLegend(position = "bottomright", pal = pal, values = ~cases,
+                      title = "Number of cases",
+                      opacity = 1 ) 
 
     })
     
