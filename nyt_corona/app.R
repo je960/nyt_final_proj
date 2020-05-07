@@ -22,12 +22,12 @@ ui <- navbarPage(
     theme = shinytheme("journal"),
     
     #Project Panel
-    tabPanel("The Project",
+    tabPanel("Overview",
              
              tabsetPanel(
                  
-             #first Project tab, Overview
-             tabPanel("Overview",
+             #first Overview tab, Project
+             tabPanel("The Project",
              
              imageOutput("image", width = "100%", height = "100%"),
              
@@ -44,35 +44,21 @@ ui <- navbarPage(
                                         p("These headlines are a snapshot of the fear carried along with the spread of the coronavirus - ramifications that impact the public health, economy, and sanity of the US. Looking to our hospitals, the US alone currently 
                                           has over 1.2 million confirmed cases of COVID-19 and over 70,000 deaths reported deaths from the virus. Looking to our streets, cities, and states, most of the country, about 214 million people or ~ 65 % of the population, is in lockdown to prevent further spread of the virus."),
                                         p("Unemployment statistics which come out on Friday are expected to show unemployment rose to about 16.1% and a loss of over 22 million nonfarm payroll jobs. That is the same as eliminating every new job created in the last decade."),
-                                        p("The COVID-19 pandemic exceeds the scope and imagination of so many, especially when distorted by misinformation in the media, by the President. This project aims to visualize the spread of COVID-19 in the US to the county level with data from the NYT."),
-                                        p("For more information about the sources please see the next tab, “Data Sources”. "), br(), br(),
+                                        p("The COVID-19 pandemic exceeds the scope and imagination of so many, especially when distorted by misinformation in the media, by the President. This project aims to visualize the spread of COVID-19 in the US to the county level with data from the NYT.")
                                         )
                     )),
-            #second Project tab, Data Sources
-            tabPanel("Credits",
-                     
-                     h1(tags$b("Data Sources"), align = "center"),
-                     
-                     fluidRow(column(2), column(8, 
-                                                p("State and county data coronavirus counts and deaths are from the meticulously kept NYT database. (John Hopkins Coronavirus Resource Center also has robust international counts)"),
-                                                p(a(href="https://www.nytimes.com/article/coronavirus-county-data-us.html", "Find it here.")),
-                                                br(),
-                                                p("State testing counts are from the Covid Tracking Project under The Atlantic."),
-                                                p(a(href="https://covidtracking.com/data", "Find it here.")),
-                                                br(),
-                                                p("Mapping was done with shapefiles from the US Census Bureau."),
-                                                p(a(href="https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html", "Find it here.")),
-                            ))
-            ),
-            
-            #third Project tab, Data Sources
+
+            #third Overview tab, About me
             tabPanel("About Me",
+                     
                      titlePanel("Jerrica Li"), 
                      
-                             #body text 
-                             imageOutput("jerrica", width = "100%", height = "100%"),
-                             h1(tags$b("I am a junior studying data science at Harvard University."), align = "center"),
-                             fluidRow(column(2), column(8, 
+                        #body text 
+                        imageOutput("jerrica", width = "100%", height = "100%"),
+                             
+                        h1(tags$b("I am a junior studying data science at Harvard University."), align = "center"),
+                             
+                        fluidRow(column(2), column(8, 
                                                         p("I major in Comparative Literature, though I also have academic interests in data science and visualization, US immigration and immigrant rights especially within the Boston Chinese community, and using technology as tools for education."),
                                                         p("This Shiny app is the final project for the course Government 1005: Data and my first ever! The topic is personal, as it is with everyone in a world affected by the pandemic. On Tuesday, March 10th, 2020, Harvard College students were forced to move out of campus within 5 days. 
                                                           The campus was in mayhem, heightened with chaos, confusion, denial, and reckoning with the severity of COVID-19. So in some ways, this project is as much for the viewers of the app as it is for me personally to process the effects of the pandemic and explore where 
@@ -82,10 +68,27 @@ ui <- navbarPage(
                                                         p(a(href="mailto:jerrica_li@college.harvard.edu?Subject=Hello!", "My college email")),
                                                         p(a(href="https://github.com/je960", "My Github account")),
                                                         p(a(href="https://www.linkedin.com/in/jerrica-li/", "My LinkedIn account"))
-                             ))
-                    )
-            )
+                        ))
             ),
+            
+            #second Overview tab, Data Sources
+            tabPanel("Credits",
+                     
+                     h1(tags$b("Data Sources"), align = "center"),
+                     
+                     fluidRow(column(2), column(8, 
+                                                p("State and county data coronavirus counts and deaths are from the meticulously kept NYT database (John Hopkins Coronavirus Resource Center also has robust international counts). Personally, the NYT have been my main source of news throughout this crisis as I trust their accuracy and dedication to quality journalism.
+                                                  I grew up in a non-political household, but I began listening to their daily podcasts as a sophomore in college and it became my main source of education to foray into American politics. They are doing amazing work on the frontlines and keeping the American public informed.", a(href="https://www.nytimes.com/article/coronavirus-county-data-us.html", "Find the NYT data here.")),
+                                                br(),
+                                                p("State testing counts are from the Covid Tracking Project under The Atlantic. The team at Atlantic were concerned with minimal reporting and inadequate testing, the result of the US and national leadership being so slow to implement mass testing. It's a phenomenal effort of hundreds of volunteer data-gatherers, developers, scientists, reporters etc.", 
+                                                  a(href="https://covidtracking.com/data", "Find COVID Tracking Project here"), "and there is a", a(href="https://covidtracking.com/race", "COVID Racial Data Tracker"), "as well."),
+                                                br(),
+                                                p("Mapping was done with shapefiles from the US Census Bureau. It was a long arduous journey to learn Leaflet, but the availability of these kinds of cartography boundaries by the US Census Bureau makes mapping much more accesible than I first imagined.", a(href="https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html", "Find the US Census Bureau map files here.")),
+                                                br(), 
+                                                p("Thank you to my friends and all the educators, staff, and fellow Odysseus-figures in Gov 1005 who have touched this work: the herioc Preceptor, the caffeinated June Hwang, the Leaflet wise Evelyn Cai, Joshua Pan, Katelyn Li, Jamie Bikales, James Bedford, Katherine Miclau, and Sara Li. It takes a village for a complit girl to learn R.")
+                                                ))
+            ))
+    ),
     
     #State Data panel
     tabPanel("State Data",
@@ -94,9 +97,6 @@ ui <- navbarPage(
                  sidebarLayout(
                      sidebarPanel(
                          
-                         HTML('<script> document.title = "COVID-19 In America"; </script>'),
-                         tags$head(tags$link(rel="shortcut icon", href="https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.poynter.org%2Freporting-editing%2F2020%2Fyouve-probably-seen-this-image-of-the-coronavirus-everywhere-what-is-it-exactly%2F&psig=AOvVaw3S076kS4qN7crlMrFUgzGY&ust=1588053753988000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCLDe7rD3h-kCFQAAAAAdAAAAABAD")),
-                         
                          p(tags$em("Be aware of the fitted scale.")),
                          
                          #ask user to input state
@@ -104,66 +104,57 @@ ui <- navbarPage(
                          selectInput(inputId = 'state', 
                                      label = 'Choose a state:', 
                                      choice = levels(state_data_shiny$state)
-                                     ),
-                     br(),br(),
-                     
-                     #ask user to input state
-                     uiOutput("countySelection")
-                 ),
+                         ),
+                         br(),br(),
+                         
+                         #ask user to input state
+                         uiOutput("countySelection")
+                     ),
                      
                      #output state plot and death plot
                      mainPanel(
-                        h1(tags$b("Corona Virus Statistics by State"), align = "center"),
-                        plotlyOutput("stateplot"), br(), br(),
-                        plotlyOutput("deathplot"), br(), br(), br(), br(), br(), br(),
-                        h1(tags$b("Corona Statistics by County"), align = "center"),
-                        plotlyOutput("countyplot"), br(), br(),
-                        plotlyOutput("countydeath"))
-                     )
+                         h1(tags$b("Corona Virus Statistics by State"), align = "center"),
+                         plotlyOutput("stateplot"), br(), br(),
+                         plotlyOutput("deathplot"), br(), br(), br(), br(), br(), br(),
+                         h1(tags$b("Corona Statistics by County"), align = "center"),
+                         plotlyOutput("countyplot"), br(), br(),
+                         plotlyOutput("countydeath"))
                  )
-             ),
+             )
+    ),
     
     tabPanel("Logarithmic Functions",
-            titlePanel("Modeling with Logarithmic Functions"),
-                    sidebarLayout(
-                        sidebarPanel(
-            
-                            p(tags$em("Be careful about the scale.")),
-                            
-                            #ask user to input state
-                            
-                            selectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE,
-                            options = list(maxItems = 10, placeholder = "States")),
-                            br(),br(),
-
-                            ),
+             titlePanel("Modeling with Logarithmic Functions"),
+             sidebarLayout(
+                 sidebarPanel(
+                     
+                     p(tags$em("Be careful about the scale.")),
+                     
+                     #ask user to input state
+                     
+                     selectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE,
+                                    options = list(maxItems = 10, placeholder = "States")),
+                     br(),br()
+                 ),
+                 mainPanel(
+                 )
+             )
+    ),
     
-                        mainPanel(
-                            plotlyOutput("logplot")
-                        )
-                      )
-            ),
-    
-   
     tabPanel("State Maps", 
              titlePanel("Mapping the Pandemic"),
              sidebarLayout(
-                sidebarPanel(
-                    p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
+                 sidebarPanel(
+                     p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
                                 in the US, so many states may be underreporting their numbers. Hover over each state for a quick look, or click on each state.")),
-                    p(tags$bold("Choose a variable:")),
-                ),
-                mainPanel(
-                    leafletOutput("state_map")
-                )
+                     p(tags$b("Choose a variable:"))
+                 ),
+                 mainPanel(
+                     leafletOutput("state_map")
+                 )
              )
     )
 )
-
-
-
-
-
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
