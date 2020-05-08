@@ -9,16 +9,28 @@ library(plotly)
 library(leaflet)
 library(shinythemes)
 library(gganimate)
+library(DT)
+library(gt)
+
+theme_set(theme_bw())
+ok <- tibble("Variable" = c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."), 
+             "Value" = c(.5782, 3.4116, 5.6641, 6.7036, 8.8152, 47.3151))
+
+gt_tbl <- ok %>% gt() %>% 
+    tab_header(
+        title = "Trouble Index Statistics")
 
 county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
 county_map_data <- readRDS("county_map_data.rds")
 leafletmap_shiny <- readRDS("leafmap.rds")
 leafletmap_deaths <- readRDS("leafmap_deaths")
+testing_shiny <- readRDS("test.rds")
+trouble_map <- readRDS("trouble_map.rds")
 
 
 ui <- navbarPage(
-    tags$b("Coronavirus Upclose"),
+    tags$b("Coronavirus Up Close"),
     
     theme = shinytheme("journal"),
     
@@ -45,7 +57,9 @@ ui <- navbarPage(
                                         p("These headlines are a snapshot of the fear carried along with the spread of the coronavirus - ramifications that impact the public health, economy, and sanity of the US. Looking to our hospitals, the US alone currently 
                                           has over 1.2 million confirmed cases of COVID-19 and over 70,000 deaths reported deaths from the virus. Looking to our streets, cities, and states, most of the country, about 214 million people or ~ 65 % of the population, is in lockdown to prevent further spread of the virus."),
                                         p("Unemployment statistics which come out on Friday are expected to show unemployment rose to about 16.1% and a loss of over 22 million nonfarm payroll jobs. That is the same as eliminating every new job created in the last decade."),
-                                        p("The COVID-19 pandemic exceeds the scope and imagination of so many, especially when distorted by misinformation in the media, by the President. This project aims to visualize the spread of COVID-19 in the US to the county level with data from the NYT.")
+                                        p("The COVID-19 pandemic exceeds the scope and imagination of so many, especially when distorted by misinformation in the media, by the President. This project aims to visualize the spread of COVID-19 in the US to the county level with data from the NYT."),
+                                        br(),
+                                        br()
                                         )
                     )),
 
@@ -98,7 +112,8 @@ ui <- navbarPage(
                  sidebarLayout(
                      sidebarPanel(
                          
-                         p(tags$em("Be aware of the fitted scale.")),
+                         p(tags$em("Be aware of the fitted scale.", 
+                                   "it's interactive")),
                          
                          #ask user to input state
                          
@@ -106,7 +121,7 @@ ui <- navbarPage(
                                      label = 'Choose a state:', 
                                      choice = levels(state_data_shiny$state)
                          ),
-                         br(),br(),
+                         br(),
                          
                          #ask user to input state
                          uiOutput("countySelection")
@@ -124,12 +139,36 @@ ui <- navbarPage(
              )
     ),
     
+    tabPanel("State Maps", 
+             titlePanel("Mapping the Pandemic"),
+             sidebarLayout(
+                 sidebarPanel(
+                     p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
+                                in the US, so many states may be underreporting their numbers of confirmed cases. Hover over each state for a quick look and zoom in and out to view states like Hawaii, Alaska, and Puerto Rico.")),
+                 ),
+                 mainPanel(
+                     h2(tags$b("US Map: Cases by State"), align = "center"),
+                     leafletOutput("state_map"),
+                     h2(tags$b("US Map: Deaths by State"), align = "center"),
+                     leafletOutput("death_map"),
+                     br(),br(), br(), br()
+                 )
+             )
+    ), 
+    
     tabPanel("Logarithmic Functions",
              titlePanel("Modeling with Logarithmic Functions"),
              sidebarLayout(
                  sidebarPanel(
-                     
-                     p(tags$em("Be careful about the scale.")),
+                     p("Another way of looking at COVID-19 data, first made popular by", a(href="https://www.youtube.com/watch?v=54XLXg4fYsc", "Minute Physics,"), "is to look at logarithmic scales.",
+                       "This graph is helpful because it help us visualize whether a state has gotten past the curve, ie when we see the line make a big drop downwards."),
+                     p("This is because of the transformed axes: the x-axis is the log of total confirmed cases and the y-axis is the log of all new cases each week. 
+                       Notice how time is not an axis; this graph is purely looking at the rate of increase of new cases. This is helpful because instead of a linear axis, 
+                       the log gives us an exponential scale which is the rate an epidemic moves! In this log graph, exponential growth is shown by a linear line, so when a state's line 
+                       makes a big drop, it means they're past the curve and stopped the exponential growth of the virus."),
+                     p("One final note is that this graph may diminish the human side of the epidemic because the each tic mark exponentially grows to encompass more and more lives at risk
+                       in ways it's hard to imagine. Treat this graph as a big picture image that shows the virus to scale."),
+                     p(tags$em("Please be patient for about 30 seconds as the animation loads. It's worth the wait!")),
                      
                      #ask user to input state
                      
@@ -138,25 +177,56 @@ ui <- navbarPage(
                  ),
                  mainPanel(
                      h1(tags$b("Coronavirus to Scale"), align = "center"), 
-                     plotlyOutput("logplot")
+                     imageOutput("logplot")
                  )
              )
     ),
     
-    tabPanel("State Maps", 
-             titlePanel("Mapping the Pandemic"),
-             sidebarLayout(
-                 sidebarPanel(
-                     p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
-                                in the US, so many states may be underreporting their numbers. Hover over each state for a quick look, or click on each state.")),
-                 ),
-                 mainPanel(
-                     h2(tags$b("US Map: Cases by State"), align = "center"),
-                     leafletOutput("state_map"),
-                     h2(tags$b("US Map: Deaths by State"), align = "center"),
-                     leafletOutput("death_map")
-                 )
-             )
+    tabPanel("Underreporting Experiment",
+             titlePanel(
+                 h1("Underreporting COVID-19 Cases in the US",
+                    align = "center")
+             ),
+             
+             fluidRow(column(2), column(8, 
+             p("I had plans to run regressions on the correlation of COVID-19 cases by county to variables like income, racial demographics, rural/ urban areas, etc. 
+               But then I began thinking about the", a(href ="https://www.nytimes.com/2020/03/13/opinion/china-response-china.html", "aggregious delay"), "in the US's reaction to taking COVID-19 seriously and", 
+               a(href ="https://www.nytimes.com/2020/03/19/opinion/coronavirus-testing.html", "to testing."), "Was there a way to account for and understand how bad undertesting and underreporting is in the US?"),
+             p("With so much public COVID-19 data publically available, let's try to run some models on our own. Why not give it a try?"),
+            
+             hr(), 
+             
+             h2("What are our base assumptions?"),
+             p("Our data analysis rests on a few assumptions about people's behaviors when they go to get tested. Because the US is not at the stage yet where 
+                states can do random population sample testing, one of our assumptions is that everyone who goes to get a test thinks equally that they have coronavirus
+                and that each state has these similar testing behaviors"),
+             
+             hr(), 
+             
+             h2("What are our testing variables?"),
+             p("The data available is tests positive and negative by state. It would be spectular to have testing numbers by county, but the US does not have a uniform healthcare system and those numbers are availble 
+               sporadically by state."), 
+             h3("People Per Test"),
+             p("Regardless, let's first make a variable of the state's population divided by number of tests and call it people_per_test. This shows us how many people one test result represents. 
+               So for example, New York state has a population of about 19 million people and has done around 1 million tests, so when we look at confirmed cases, one test represents 13 people in that state. 
+               This is a variable of resolution of the state's testing numbers."),
+             h3("Percent Positive"),
+             p("Next, let's make a variable of the percent of positive tests called perc_positive. We are dividing the number of total tests by the number of positive tests. This shows us the magnitude of the spread of the virus"), 
+             h3("Trouble Index"), 
+             p("Lastly, let's create our trouble index by multiplying people per test by percent positive. So, our index takes two things into account, resolution of testing and the magnitude of the virus in each state. 
+               Therefore, a high index means a low testing resolution and/or a high percentage of positive tests. Let's take a look at our data arranged from low to high by our trouble index. Are you surprised?"),
+             br(),
+             DT::dataTableOutput("variable_table"), 
+             br(), 
+             p("And just to understand the range of values of our index, here is a summary:"),
+             gt_output("trouble_stats"),
+             
+             hr(), 
+             
+             h2("Let's map it!"), 
+             leafletOutput("trouble")
+
+             ))
     )
 )
 
@@ -277,7 +347,7 @@ server <- function(input, output) {
             theme_minimal() +
             theme(axis.text.x = element_text(angle = 70, hjust = 1), 
                   panel.grid.major = element_blank()) + 
-            labs(title =paste("Confirmed Deaths by Corona for", input$state, sep = " "),  
+            labs(title =paste("Confirmed Deaths by Corona for", input$county, sep = " "),  
                  x = "Date", 
                  y = "Confirmed Cases") +
             scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
@@ -289,6 +359,8 @@ server <- function(input, output) {
     
     #State Maps Panel, cases 
     output$state_map <- renderLeaflet({
+        
+        
             
             pal <- colorNumeric("YlOrRd", NULL, n = 10)
             
@@ -315,7 +387,7 @@ server <- function(input, output) {
     })
             
     output$death_map <- renderLeaflet({
-        
+
             pal <- colorNumeric("YlOrRd", NULL, n = 10)
             
             labels <- sprintf(
@@ -342,31 +414,53 @@ server <- function(input, output) {
          
     
     #Logarithmic Panel, county cases over time plot
-    output$logplot <- renderPlot({
+    output$logplot <- renderImage({
         
-
+        outfile <- tempfile(fileext='.gif')
+        
+        
+        # Return blank if no choice selected yet
+        if (input$logstate == " ") {
+            return()
+        }
+        
         # Filter the dataset based on what state was selected
-        data <- state_data_shiny %>%
-            filter(state == input$logstate)
+        logplot <- state_data_shiny %>%
+            filter(state %in% input$logstate)%>%
+            arrange(state) %>%  
+            group_by(state) %>% 
+            slice(which(row_number() %% 7 == 1))
+        
+        logplot$change <- NA
+        for(i in 2:nrow(logplot)){
+            logplot$change[i] <- logplot$cases[i] - logplot$cases[i - 1]}
+        
+        logplot$change[logplot$change < 0] <- 1
+        logplot$change[is.na(logplot$change)] <- 1
+        
+        logplot <- logplot %>% 
+            mutate(log_case = log(cases)) 
 
         #Create plot of corona cases over time
-        b <- ggplot(choice_1, aes(x = date, y = cases)) +
-            geom_line() +
-            geom_point() + 
-            geom_line(data = choice_two, aes(x = date, y = cases)) +
-            geom_point(data = choice_two, aes(x = date, y = cases)) +
-            theme_minimal() +
-            theme(axis.text.x = element_text(angle = 70, hjust = 1), 
-                  panel.grid.major = element_blank()) + 
-            labs(title =paste("Confirmed Corona Cases"),  
-                 x = "Date", 
-                 y = "Confirmed Cases") +
-            scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-            geom_area(aes(x=new_date), fill="royalblue2", alpha=.5)
+        b <- ggplot(logplot, aes(x = log_case, y = log(change), color = state)) +
+                geom_line() +
+                geom_point() +
+                theme_minimal() +
+                labs(x = "Confirmed cases", 
+                     y = "New cases", 
+                     color = "State") +
+                transition_reveal(log_case)
         
-        #render
-        b
-    })
+        anim_save("outfile.gif", animate(b))
+        
+        #Return a list containing the filename
+        list(src = "outfile.gif",
+             contentType = 'image/gif',
+              width = 600,
+              height = 650,
+              alt = "This is an animation graph of the trajectory of coronavirus.", 
+            style="display: block; margin-left: auto; margin-right: auto;"
+        )}, deleteFile = TRUE)
 
     
     # Project panel, Overview tab, COVID-19 NYT Illustration
@@ -393,10 +487,49 @@ server <- function(input, output) {
     output$jerrica <- renderImage({
         # Return a list containing the filename and alt text
         list(src = './jerrica.jpg', 
-             height = 400,
-             width = 300, style="display: block; margin-left: auto; margin-right: auto;")
+             height = 390,
+             width = 275, 
+             style="display: block; margin-left: auto; margin-right: auto;")
     }, deleteFile = FALSE
     )
+    
+    
+    output$variable_table = DT::renderDataTable({
+        testing_shiny %>% 
+            select(state, everything()) %>% 
+            select(-GEOID, -negative_test) %>% 
+            arrange(desc(trouble))
+    })
+    
+    
+    #Logarithmic Panel, county cases over time plot
+    output$trouble_stats <- render_gt(
+        expr = gt_tbl
+    )
+    
+    
+    output$trouble <- renderLeaflet({
+        
+        popup_dat <- paste0("<strong>State: </strong>",
+                            trouble_map$state,
+                            "<br><strong> Index: </strong>",
+                            trouble_map$trouble)
+        
+        
+        pal <- colorNumeric("YlOrRd", NULL, n = 10)
+        
+        leaflet(data = trouble_map) %>% 
+            addTiles() %>%
+            setView(-96, 37.8, 4) %>%
+            addPolygons(fillColor = ~pal(trouble),
+                        fillOpacity = 0.8,
+                        color = "#BDBDC3",
+                        weight = 1,
+                        popup = popup_dat) %>%
+            addLegend("bottomright", pal = pal, values = ~trouble,
+                      title = "Trouble Index",
+                      opacity = 1 )
+    })
 }
 
 

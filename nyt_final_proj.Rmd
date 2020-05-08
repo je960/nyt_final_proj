@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r libraries, include = FALSE}
 library(tidyverse)
+library(purrr)
 library(broom)
 library(dplyr)
 library(infer)
@@ -24,14 +25,19 @@ library(sp)
 library(leaflet)
 library(rgdal)
 library(googlesheets)
+library(gganimate)
+library(schoolmath)
+library(gt)
+library(webshot)
 ```
 
 ```{r reading data}
 state_data <- read.csv("covid-19-data/us-states.csv") 
+
 county_data <- read.csv('covid-19-data/us-counties.csv')
 #yes <- state_data %>% 
         #filter(date == latest_date)
-testing <- read.csv("covid-19-data/current.csv")
+testing <- read.csv("covid-19-data/yes.csv")
 
 test_history <- read.csv("covid-19-data/test_historical.csv")
 
@@ -157,6 +163,7 @@ test <- testing_full %>%
   mutate(perc_positive = (positive_test/total_test)) %>%
   mutate(trouble = (perc_positive * people_per_test))
 
+
 map <- merge(us.map.state, test, by.x = "NAME", by.y = "state")
 
   leaflet(data = map) %>% 
@@ -182,14 +189,15 @@ latest_date <- county_data %>%
   slice(1) %>% 
   pull(date)
 
-state_latest <- state_data %>% 
+state_new <- state_data %>% 
   filter(date == latest_date) %>% 
   mutate(GEOID = as.character(GEOID), 
          state = as.character(state)) %>% 
-  select(GEOID, cases, state)
+  select(GEOID, cases, state, deaths)
 
-leafmap <- merge(us.map.state, state_latest, by.x = "NAME", by.y = "state")
+leafmap <- merge(us.map.state, state_new, by.x = "NAME", by.y = "state")
 
+troublemap <- 
 glimpse(us.map.state)
 
 popup_dat <- paste0("<strong>State: </strong>",
@@ -218,18 +226,30 @@ pal <- colorNumeric("RdYlGn", NULL, n = 10)
 #More things to try:
 #death rates, death rates plotted by county / state and to see is it rural places? urban cities? the south? 
 #by state, see population size over case rate, 
+summary(test)
 
+ok <- tibble("Variable" = c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."), 
+              "Value" = c(.5782, 3.4116, 5.6641, 6.7036, 8.8152, 47.3151))
+glimpse(trouble_map)
+trouble<- ok %>% gt() %>% 
+tab_header(
+    title = "Trouble Index Statistics")
+  webshot::install_phantomjs()
+trouble %>%
+gtsave("trouble_stat.png", path = "raw_data" )
 ```
 
 
 ```{r tab three change in cases over time}
+wash <- state_data %>% 
+  filter(state == "Washington", state == "California")
 
 wash$change <- NA
 for(i in 2:nrow(wash)){
   wash$change[i] <- wash$cases[i] - wash$cases[i - 1]
 }
 
-plot(wash$new_date, log(wash$change), type = 'l')
+plot(log(wash$cases), log(wash$change), type = 'l')
 
 ```
 
@@ -262,14 +282,67 @@ ggsave(path = "nyt_corona", filename = "washington.png")
 ```
 
 ```{r saving data}
-saveRDS(county_data, file = "nyt_corona/county_data")
+saveRDS(county_data, file = "nyt_corona/county_data_1")
 saveRDS(state_data, file = "nyt_corona/state_data")
 saveRDS(yes, file = "nyt_corona/yes")
 saveRDS(county_map_data, file = "nyt_corona/county_map_data.rds")
+saveRDS(leafmap, file = "nyt_corona/leafmap")
+saveRDS(test, file = "nyt_corona/test.rds")
+saveRDS(map, file = "nyt_corona/trouble_map.rds")
 ```
 
 ```{r}
 #list of online resources I looked at 
 # # https://stackoverflow.com/questions/1330989/rotating-and-spacing-axis-labels-in-ggplot2
+```
+
+```{r}
+
+theme_set(theme_bw())
+three <- three %>% 
+  arrange(state) %>%  
+  group_by(state) %>% 
+ slice(which(row_number() %% 7 == 1))
+
+
+
+three$last <- NA
+for(i in 2:nrow(three)){
+  three$last[i] <- three$cases[i] - three$cases[i - 1]}
+
+logplot <- three %>% 
+            filter(!is.negative(change)) %>% 
+            mutate(log_case = log(cases))
+
+plot(log(wash$cases), log(wash$change), type = 'l')
+
+new_three<- three %>% 
+  mutate(log_case = log(cases))
+
+wow %>%
+ggplot(aes(x = log_case , y = log(last), color = state)) +
+  geom_line() +
+  geom_point() + 
+  theme_minimal() +
+  labs(title = "Confirmed Corona Cases by State", 
+       x = "Confirmed cases", 
+       y = "New cases") +
+  transition_reveal(log_case)
+
+
+wow <- state_data %>% 
+  filter(state %in% c("Colorado", "Maine", "New York")) %>% 
+  arrange(state) %>%  
+  group_by(state) %>% 
+ slice(which(row_number() %% 7 == 1))
+wow$last <- NA
+for(i in 2:nrow(wow)){
+  wow$last[i] <- wow$cases[i] - wow$cases[i - 1]}
+leafmap 
+wow$last[wow$last == 0] <- 1
+wow$last[is.na(wow$last)] <- 1
+wow <- wow %>% 
+        mutate(log_case = log(cases))
+
 ```
 
