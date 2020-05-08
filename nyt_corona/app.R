@@ -14,6 +14,7 @@ county_data_shiny <- readRDS("county_data")
 state_data_shiny <- readRDS("state_data")
 county_map_data <- readRDS("county_map_data.rds")
 leafletmap_shiny <- readRDS("leafmap.rds")
+leafletmap_deaths <- readRDS("leafmap_deaths")
 
 
 ui <- navbarPage(
@@ -132,11 +133,12 @@ ui <- navbarPage(
                      
                      #ask user to input state
                      
-                     selectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE,
-                                    options = list(maxItems = 10, placeholder = "States")),
+                     selectInput(inputId = "logstate", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE),
                      br(),br()
                  ),
                  mainPanel(
+                     h1(tags$b("Coronavirus to Scale"), align = "center"), 
+                     plotlyOutput("logplot")
                  )
              )
     ),
@@ -147,10 +149,12 @@ ui <- navbarPage(
                  sidebarPanel(
                      p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
                                 in the US, so many states may be underreporting their numbers. Hover over each state for a quick look, or click on each state.")),
-                     p(tags$b("Choose a variable:"))
                  ),
                  mainPanel(
-                     leafletOutput("state_map")
+                     h2(tags$b("US Map: Cases by State"), align = "center"),
+                     leafletOutput("state_map"),
+                     h2(tags$b("US Map: Deaths by State"), align = "center"),
+                     leafletOutput("death_map")
                  )
              )
     )
@@ -250,7 +254,7 @@ server <- function(input, output) {
                  x = "Date", 
                  y = "Confirmed Cases") +
             scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-            geom_area(aes(x=new_date), fill="royalblue2", alpha=.5)
+            geom_area(aes(x=date), fill="royalblue2", alpha=.5)
         
         #render
         b
@@ -277,51 +281,74 @@ server <- function(input, output) {
                  x = "Date", 
                  y = "Confirmed Cases") +
             scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-            geom_area(aes(x=new_date), fill="orangered2", alpha=.5)
+            geom_area(aes(x=date), fill="orangered2", alpha=.5)
         
         #render
         c
     })
     
     #State Maps Panel, cases 
-    output$state_cases <- renderLeaflet({
-        
-        pal <- colorNumeric("YlOrRd", NULL, n = 10)
-        
-        labels <- sprintf(
-            "%s<br/>%g cases",
-            leafmap$NAME, leafmap$cases
-        ) %>% lapply(htmltools::HTML)
-        
-        leaflet(data = leafmap) %>% 
-            addTiles() %>%
-            setView(-96, 37.8, 4) %>%
-            addPolygons(fillColor = ~pal(cases),
-                        fillOpacity = 0.8,
-                        color = "#BDBDC3",
-                        weight = 1,
-                        popup = popup_dat,
-                        label = labels,
-                        labelOptions = labelOptions(
-                            textsize = "15px",
-                            direction = "auto")) %>%
-            addLegend(position = "bottomright", pal = pal, values = ~cases,
-                      title = "Number of cases",
-                      opacity = 1 ) 
-
+    output$state_map <- renderLeaflet({
+            
+            pal <- colorNumeric("YlOrRd", NULL, n = 10)
+            
+            labels <- sprintf(
+                "%s<br/>%g cases",
+                leafmap$NAME, leafmap$cases
+            ) %>% lapply(htmltools::HTML)
+            
+            leaflet(data = leafmap) %>% 
+                addTiles() %>%
+                setView(-96, 37.8, 4) %>%
+                addPolygons(fillColor = ~pal(cases),
+                            fillOpacity = 0.8,
+                            color = "#BDBDC3",
+                            weight = 1,
+                            popup = popup_dat,
+                            label = labels,
+                            labelOptions = labelOptions(
+                                textsize = "15px",
+                                direction = "auto")) %>%
+                addLegend(position = "bottomright", pal = pal, values = ~cases,
+                          title = "Number of cases",
+                          opacity = 1 )
     })
+            
+    output$death_map <- renderLeaflet({
+        
+            pal <- colorNumeric("YlOrRd", NULL, n = 10)
+            
+            labels <- sprintf(
+                "%s<br/>%g deaths",
+                leafletmap_deaths$NAME, leafletmap_deaths$deaths
+            ) %>% lapply(htmltools::HTML)
+            
+            leaflet(data = leafletmap_deaths) %>% 
+                addTiles() %>%
+                setView(-96, 37.8, 4) %>%
+                addPolygons(fillColor = ~pal(cases),
+                            fillOpacity = 0.8,
+                            color = "#BDBDC3",
+                            weight = 1,
+                            label = labels,
+                            labelOptions = labelOptions(
+                                textsize = "15px",
+                                direction = "auto")) %>%
+                addLegend(position = "bottomright", pal = pal, values = ~deaths,
+                          title = "Number of deaths",
+                          opacity = 1 )
+            
+        })
+         
     
     #Logarithmic Panel, county cases over time plot
-    output$logplot <- renderPlotly({
+    output$logplot <- renderPlot({
         
 
         # Filter the dataset based on what state was selected
-        choice_1 <- state_data_shiny %>%
-            filter(state == input$selectize[1])
-        
-        choice_two <- state_data_shiny %>%
-            filter(state == input$selectize[2])
-        
+        data <- state_data_shiny %>%
+            filter(state == input$logstate)
+
         #Create plot of corona cases over time
         b <- ggplot(choice_1, aes(x = date, y = cases)) +
             geom_line() +
