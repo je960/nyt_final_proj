@@ -29,24 +29,28 @@ library(gganimate)
 library(schoolmath)
 library(gt)
 library(webshot)
+library(transformr)
 ```
 
 ```{r reading data}
+#state data from NYT
 state_data <- read.csv("covid-19-data/us-states.csv") 
 
+#county data from NYT
 county_data <- read.csv('covid-19-data/us-counties.csv')
-#yes <- state_data %>% 
-        #filter(date == latest_date)
+
+#current testing numbers from tracking project
 testing <- read.csv("covid-19-data/yes.csv")
 
+#historical testing numbers from tracking project
 test_history <- read.csv("covid-19-data/test_historical.csv")
 
+#mapfiles from US Census
 us.map.state <- readOGR(dsn= 'us_state_map', layer = "cb_2018_us_state_5m", stringsAsFactors = FALSE)
 
 us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("69","64", "68", "70", "74"),]
 
 us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("81", "84", "86", "87", "89", "71", "76","95", "79"),]
-
 ```
 
 ```{r cleaning data}
@@ -90,10 +94,9 @@ county_data <-
 ```
 
 ```{r wrangling test_history}
-glimpse(test_hist_3)
+
 
 test_hist_3 <- test_history %>%
-  mutate(perc_pos = positive/total_test_results) %>%
   filter(state %in% c("NY", "NJ", "MA"))
 
 pop_3 <- population %>% 
@@ -110,16 +113,26 @@ pop_3[2, "state"] <- "NJ"
 pop_3[3, "state"] <- "NY"
 
 
-omg <- test_hist_3 %>% 
+omg_1 <- test_hist_3 %>% 
   left_join(pop_3, by = "state") %>%
-  mutate(people_per_test = (total_test_results/pop), 
+  mutate(people_per_test = (pop/total_test_results),
+         perc_pos = (positive/total_test_results),
          state = as.factor(state)) %>% 
-  select(state, perc_pos, people_per_test)
+  select(state, perc_pos, people_per_test, date)
+omg_1 %>% group_by(state) %>% arrange(desc(perc_pos))
 
-omg %>%
-  ggplot(aes(x = people_per_test, y = perc_pos)) + 
-  geom_point() +
-  theme_minimal()
+omg_1 %>%
+  ggplot(aes(x = people_per_test, y = perc_pos, color = state)) + 
+  geom_line() +
+  theme_minimal() +
+  transition_states(state, transition_length = 5, state_length = 1) +
+  view_follow() +
+   ggtitle('Now showing {closest_state}',
+          subtitle = 'Frame {frame} of {nframes}')
+
+  
+  
+
 ```
 
 ```{r wrangle for clean testing data}
@@ -163,8 +176,15 @@ test <- testing_full %>%
   mutate(perc_positive = (positive_test/total_test)) %>%
   mutate(trouble = (perc_positive * people_per_test))
 
+test_2 <- test_1 %>% 
+  mutate(state = as.character(state))
 
-map <- merge(us.map.state, test, by.x = "NAME", by.y = "state")
+map_1 <- merge(us.map.state, test_2, by.x = "NAME", by.y = "state")
+
+popup_dat <- paste0("<strong>State: </strong>",
+                    map$state,
+                    "<br><strong> Number of cases: </strong>",
+                    map$cases)
 
   leaflet(data = map) %>% 
       addTiles() %>%
@@ -197,6 +217,7 @@ state_new <- state_data %>%
 
 leafmap <- merge(us.map.state, state_new, by.x = "NAME", by.y = "state")
 
+state_new
 troublemap <- 
 glimpse(us.map.state)
 
@@ -237,6 +258,9 @@ tab_header(
   webshot::install_phantomjs()
 trouble %>%
 gtsave("trouble_stat.png", path = "raw_data" )
+
+state_data
+
 ```
 
 
@@ -276,28 +300,16 @@ ggplot(wash, aes(x = new_date, y = cases)) +
 
 ```
 
-
-```{r ggsave, include = FALSE}
-ggsave(path = "nyt_corona", filename = "washington.png")
-```
-
 ```{r saving data}
-saveRDS(county_data, file = "nyt_corona/county_data_1")
-saveRDS(state_data, file = "nyt_corona/state_data")
-saveRDS(yes, file = "nyt_corona/yes")
-saveRDS(county_map_data, file = "nyt_corona/county_map_data.rds")
+saveRDS(county_data, file = "nyt_corona/county_data.rds")
+saveRDS(state_data, file = "nyt_corona/state_data.rds")
 saveRDS(leafmap, file = "nyt_corona/leafmap")
 saveRDS(test, file = "nyt_corona/test.rds")
-saveRDS(map, file = "nyt_corona/trouble_map.rds")
+saveRDS(map_1, file = "nyt_corona/trouble_map_PR.rds")
 ```
 
 ```{r}
-#list of online resources I looked at 
-# # https://stackoverflow.com/questions/1330989/rotating-and-spacing-axis-labels-in-ggplot2
-```
-
-```{r}
-
+glimpse(leafmap)
 theme_set(theme_bw())
 three <- three %>% 
   arrange(state) %>%  
@@ -344,5 +356,26 @@ wow$last[is.na(wow$last)] <- 1
 wow <- wow %>% 
         mutate(log_case = log(cases))
 
+```
+```{r}
+pal <- colorNumeric("YlOrRd", NULL, n = 10)
+glimpse(map_1)
+            
+            popup_dat <- paste0("<strong>State: </strong>",
+                                map_1$NAME,
+                                "<br><strong> Index: </strong>",
+                                map_1$people_per_test)
+            state_new
+            leaflet(data = map_1) %>% 
+                addTiles() %>%
+                setView(-96, 37.8, 4) %>%
+                addPolygons(fillColor = ~pal(people_per_test),
+                            fillOpacity = 0.8,
+                            color = "#BDBDC3",
+                            weight = 1,
+                            popup = popup_dat) %>%
+                addLegend("bottomright", pal = pal, values = ~people_per_test,
+                          title = "People Per Test",
+                          opacity = 1 )
 ```
 

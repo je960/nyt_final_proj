@@ -20,14 +20,12 @@ gt_tbl <- ok %>% gt() %>%
     tab_header(
         title = "Trouble Index Statistics")
 
-county_data_shiny <- readRDS("county_data")
-state_data_shiny <- readRDS("state_data")
-county_map_data <- readRDS("county_map_data.rds")
-leafletmap_shiny <- readRDS("leafmap.rds")
+county_data_shiny <- readRDS("county_data.rds")
+state_data_shiny <- readRDS("state_data.rds")
+leafmap <- readRDS("leafmap.rds")
 leafletmap_deaths <- readRDS("leafmap_deaths")
 testing_shiny <- readRDS("test.rds")
-trouble_map <- readRDS("trouble_map.rds")
-
+trouble_pr <- readRDS("trouble_map_PR.rds")
 
 ui <- navbarPage(
     tags$b("Coronavirus Up Close"),
@@ -65,6 +63,12 @@ ui <- navbarPage(
 
             #third Overview tab, About me
             tabPanel("About Me",
+                     
+                     # Set the favicon and wording for tab header overall
+                     
+                     HTML('<script> document.title = "Coronavirus Up Close"; </script>'),
+                     tags$head(tags$link(rel="shortcut icon", href="https://lh5.googleusercontent.com/ZyNIMBOw4Y6u-zgwfO6rjzXPDJzRSOJRQ0Iz829tncPk0v_fB76fuqJwpnPYVFXJON7gDZDYUlX93W1HmwNvdbSX1yGmTIikfrmIYN84bsTTrpKGNe_QBTsTMH0cTAR2zPBAgZFT")),
+                     
                      
                      titlePanel("Jerrica Li"), 
                      
@@ -129,12 +133,12 @@ ui <- navbarPage(
                      
                      #output state plot and death plot
                      mainPanel(
-                         h1(tags$b("Corona Virus Statistics by State"), align = "center"),
-                         plotlyOutput("stateplot"), br(), br(),
-                         plotlyOutput("deathplot"), br(), br(), br(), br(), br(), br(),
                          h1(tags$b("Corona Statistics by County"), align = "center"),
                          plotlyOutput("countyplot"), br(), br(),
-                         plotlyOutput("countydeath"))
+                         plotlyOutput("countydeath"), br(), br(), br(), br(), br(), br(),
+                         h1(tags$b("Corona Virus Statistics by State"), align = "center"),
+                         plotlyOutput("stateplot"), br(), br(),
+                         plotlyOutput("deathplot"))
                  )
              )
     ),
@@ -145,12 +149,13 @@ ui <- navbarPage(
                  sidebarPanel(
                      p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
                                 in the US, so many states may be underreporting their numbers of confirmed cases. Hover over each state for a quick look and zoom in and out to view states like Hawaii, Alaska, and Puerto Rico.")),
-                 ),
+                     checkboxInput(inputId = "death",
+                                   label = "View deaths per state",
+                                   value = FALSE)
+                     ),
                  mainPanel(
-                     h2(tags$b("US Map: Cases by State"), align = "center"),
+                     h2(tags$b("US Map: Corona by State "), align = "center"),
                      leafletOutput("state_map"),
-                     h2(tags$b("US Map: Deaths by State"), align = "center"),
-                     leafletOutput("death_map"),
                      br(),br(), br(), br()
                  )
              )
@@ -162,17 +167,19 @@ ui <- navbarPage(
                  sidebarPanel(
                      p("Another way of looking at COVID-19 data, first made popular by", a(href="https://www.youtube.com/watch?v=54XLXg4fYsc", "Minute Physics,"), "is to look at logarithmic scales.",
                        "This graph is helpful because it help us visualize whether a state has gotten past the curve, ie when we see the line make a big drop downwards."),
+                     h3("Axis Transformation"),
                      p("This is because of the transformed axes: the x-axis is the log of total confirmed cases and the y-axis is the log of all new cases each week. 
                        Notice how time is not an axis; this graph is purely looking at the rate of increase of new cases. This is helpful because instead of a linear axis, 
                        the log gives us an exponential scale which is the rate an epidemic moves! In this log graph, exponential growth is shown by a linear line, so when a state's line 
                        makes a big drop, it means they're past the curve and stopped the exponential growth of the virus."),
+                     h3("Note"),
                      p("One final note is that this graph may diminish the human side of the epidemic because the each tic mark exponentially grows to encompass more and more lives at risk
                        in ways it's hard to imagine. Treat this graph as a big picture image that shows the virus to scale."),
                      p(tags$em("Please be patient for about 30 seconds as the animation loads. It's worth the wait!")),
                      
                      #ask user to input state
                      
-                     selectInput(inputId = "logstate", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE),
+                     selectInput(inputId = "logstate", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE, selected = "New York"),
                      br(),br()
                  ),
                  mainPanel(
@@ -191,7 +198,8 @@ ui <- navbarPage(
              fluidRow(column(2), column(8, 
              p("I had plans to run regressions on the correlation of COVID-19 cases by county to variables like income, racial demographics, rural/ urban areas, etc. 
                But then I began thinking about the", a(href ="https://www.nytimes.com/2020/03/13/opinion/china-response-china.html", "aggregious delay"), "in the US's reaction to taking COVID-19 seriously and", 
-               a(href ="https://www.nytimes.com/2020/03/19/opinion/coronavirus-testing.html", "to testing."), "Was there a way to account for and understand how bad undertesting and underreporting is in the US?"),
+               a(href ="https://www.nytimes.com/2020/03/19/opinion/coronavirus-testing.html", "to testing."), "I could run those regressions, but confirmed cases is only half the picture when we don't know how many cases
+               are going unconfirmed. A classmate showed me a data set by the COVID Tracking Project which shows the number of tests per state. With this data, is there a way to account for and understand how bad undertesting and underreporting is in the US?"),
              p("With so much public COVID-19 data publically available, let's try to run some models on our own. Why not give it a try?"),
             
              hr(), 
@@ -214,7 +222,7 @@ ui <- navbarPage(
              p("Next, let's make a variable of the percent of positive tests called perc_positive. We are dividing the number of total tests by the number of positive tests. This shows us the magnitude of the spread of the virus"), 
              h3("Trouble Index"), 
              p("Lastly, let's create our trouble index by multiplying people per test by percent positive. So, our index takes two things into account, resolution of testing and the magnitude of the virus in each state. 
-               Therefore, a high index means a low testing resolution and/or a high percentage of positive tests. Let's take a look at our data arranged from low to high by our trouble index. Are you surprised?"),
+               Therefore, a high index means a low testing resolution and/or a high percentage of positive tests, which suggests that actual COVID-19 cases are much higher than confirmed. Let's take a look at our data arranged from low to high by our trouble index."),
              br(),
              DT::dataTableOutput("variable_table"), 
              br(), 
@@ -224,7 +232,12 @@ ui <- navbarPage(
              hr(), 
              
              h2("Let's map it!"), 
-             leafletOutput("trouble")
+             p("Mapping out the data helps us understand visually where the worst states are. Remember, a high index means that these states are not doing enough testing and the scale of the problem is probably much worse than reported. 
+               For the sake of these graphs, I ommitted Puerto Rico as an outlier so that you can see the definition within the continental US. Feel free to zoom in and out and move the map."),
+             radioButtons(inputId="variable", label="Choose your variable:",
+                          choices=list("People Per Test" = 1, "Number of Tests" = 2, "Trouble Index" = 3)), 
+             
+             leafletOutput("trouble"),
 
              ))
     )
@@ -360,9 +373,15 @@ server <- function(input, output) {
     #State Maps Panel, cases 
     output$state_map <- renderLeaflet({
         
-        
+        if (input$death == FALSE) {
+            
             
             pal <- colorNumeric("YlOrRd", NULL, n = 10)
+            
+            popup_dat <- paste0("<strong>State: </strong>", 
+                                leafmap$NAME, 
+                                  "<br><strong>Cases: </strong>", 
+                                leafmap$cases)
             
             labels <- sprintf(
                 "%s<br/>%g cases",
@@ -384,35 +403,40 @@ server <- function(input, output) {
                 addLegend(position = "bottomright", pal = pal, values = ~cases,
                           title = "Number of cases",
                           opacity = 1 )
-    })
+        }
+        
+        if (input$death == TRUE) {
             
-    output$death_map <- renderLeaflet({
-
             pal <- colorNumeric("YlOrRd", NULL, n = 10)
+            
+            state_popup <- paste0("<strong>State: </strong>", 
+                                  leafmap$NAME, 
+                                  "<br><strong>Deaths: </strong>", 
+                                  leafmap$deaths)
             
             labels <- sprintf(
                 "%s<br/>%g deaths",
-                leafletmap_deaths$NAME, leafletmap_deaths$deaths
+                leafmap$NAME, leafmap$deaths
             ) %>% lapply(htmltools::HTML)
             
-            leaflet(data = leafletmap_deaths) %>% 
+            leaflet(data = leafmap) %>% 
                 addTiles() %>%
                 setView(-96, 37.8, 4) %>%
-                addPolygons(fillColor = ~pal(cases),
+                addPolygons(fillColor = ~pal(deaths),
                             fillOpacity = 0.8,
                             color = "#BDBDC3",
                             weight = 1,
                             label = labels,
                             labelOptions = labelOptions(
                                 textsize = "15px",
-                                direction = "auto")) %>%
+                                direction = "auto"), 
+                            popup = state_popup) %>%
                 addLegend(position = "bottomright", pal = pal, values = ~deaths,
                           title = "Number of deaths",
                           opacity = 1 )
-            
+            }
         })
-         
-    
+ 
     #Logarithmic Panel, county cases over time plot
     output$logplot <- renderImage({
         
@@ -466,7 +490,7 @@ server <- function(input, output) {
     # Project panel, Overview tab, COVID-19 NYT Illustration
     output$image <- renderImage({
         # Return a list containing the filename and alt text
-        list(src = './cybor.jpg', 
+        list(src = './pictures/cybor.jpg', 
              height = 400,
              width = 550, style="display: block; margin-left: auto; margin-right: auto;")
     }, deleteFile = FALSE
@@ -476,7 +500,7 @@ server <- function(input, output) {
     # Project panel, Overview tab, newspaper headline image
     output$headline <- renderImage({
         # Return a list containing the filename and alt text
-        list(src = './headline.png', 
+        list(src = './pictures/headline.png', 
              height = 700,
              width = 600, style="display: block; margin-left: auto; margin-right: auto;")
     }, deleteFile = FALSE
@@ -486,7 +510,7 @@ server <- function(input, output) {
     # Project panel, About Me tab, bio photo
     output$jerrica <- renderImage({
         # Return a list containing the filename and alt text
-        list(src = './jerrica.jpg', 
+        list(src = './pictures/jerrica.jpg', 
              height = 390,
              width = 275, 
              style="display: block; margin-left: auto; margin-right: auto;")
@@ -510,26 +534,74 @@ server <- function(input, output) {
     
     output$trouble <- renderLeaflet({
         
-        popup_dat <- paste0("<strong>State: </strong>",
-                            trouble_map$state,
-                            "<br><strong> Index: </strong>",
-                            trouble_map$trouble)
+        if(input$variable == "1") {
+            
+            pal <- colorNumeric("YlOrRd", n = 10, domain = trouble_pr$people_per_test)
+            
+            state_popup <- paste0("<strong>State: </strong>", 
+                                  trouble_pr$NAME, 
+                                  "<br><strong>People Per Test: </strong>", 
+                                  trouble_pr$people_per_test)
+            
+            leaflet(data = trouble_pr) %>% 
+                addTiles() %>%
+                setView(-96, 37.8, 4) %>%
+                addPolygons(fillColor = ~pal(people_per_test),
+                            fillOpacity = 0.8,
+                            color = "#BDBDC3",
+                            weight = 1,
+                            popup = state_popup) %>%
+                addLegend("bottomright", pal = pal, values = ~people_per_test,
+                          title = "People Per Test",
+                          opacity = 1 )
+        }
         
+       
+        else if(input$variable == "2"){
+            
+            state_popup <- paste0("<strong>State: </strong>", 
+                                  trouble_pr$NAME, 
+                                  "<br><strong>Numbers Tested: </strong>", 
+                                  trouble_pr$total_test)
+            
+            pal <- colorNumeric("YlOrRd", n = 10, domain = trouble_pr$total_test)
+            
+            leaflet(data = trouble_pr) %>% 
+                addTiles() %>%
+                setView(-96, 37.8, 4) %>%
+                addPolygons(fillColor = ~pal(total_test),
+                            fillOpacity = 0.8,
+                            color = "#BDBDC3",
+                            weight = 1,
+                            popup = state_popup) %>%
+                addLegend("bottomright", pal = pal, values = ~total_test,
+                          title = "Total Tests",
+                          opacity = 1 )
+        }
         
-        pal <- colorNumeric("YlOrRd", NULL, n = 10)
+        else {
+            pal <- colorNumeric("YlOrRd", n = 10, domain = trouble_pr$trouble)
+            
+            popup_dat <- paste0("<strong>State: </strong>",
+                                trouble_pr$NAME,
+                                "<br><strong> Index: </strong>",
+                                trouble_pr$trouble)
+            
+            leaflet(data = trouble_pr) %>% 
+                addTiles() %>%
+                setView(-96, 37.8, 4) %>%
+                addPolygons(fillColor = ~pal(trouble),
+                            fillOpacity = 0.8,
+                            color = "#BDBDC3",
+                            weight = 1,
+                            popup = popup_dat) %>%
+                addLegend("bottomright", pal = pal, values = ~trouble,
+                          title = "Trouble Index",
+                          opacity = 1 )
+        }
         
-        leaflet(data = trouble_map) %>% 
-            addTiles() %>%
-            setView(-96, 37.8, 4) %>%
-            addPolygons(fillColor = ~pal(trouble),
-                        fillOpacity = 0.8,
-                        color = "#BDBDC3",
-                        weight = 1,
-                        popup = popup_dat) %>%
-            addLegend("bottomright", pal = pal, values = ~trouble,
-                      title = "Trouble Index",
-                      opacity = 1 )
     })
+    
 }
 
 
