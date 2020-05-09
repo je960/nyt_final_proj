@@ -11,25 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r libraries, include = FALSE}
 library(tidyverse)
-library(purrr)
-library(broom)
 library(dplyr)
-library(infer)
 library(ggplot2)
-library(ggthemes)
 library(lubridate)
 library(dplyr)
 library(tidycensus)
 library(janitor)
-library(sp)
 library(leaflet)
 library(rgdal)
-library(googlesheets)
-library(gganimate)
-library(schoolmath)
-library(gt)
-library(webshot)
-library(transformr)
 ```
 
 ```{r reading data}
@@ -54,7 +43,6 @@ us.map.state <- us.map.state[!us.map.state$STATEFP %in% c("81", "84", "86", "87"
 ```
 
 ```{r cleaning data}
-
 #clean testing data so names are right
 test_clean <- testing %>% 
   clean_names() %>%
@@ -93,12 +81,119 @@ county_data <-
 
 ```
 
-```{r wrangling test_history}
+```{r test run mapping}
+#mapping is good to go for the shiny app
+
+#pull latest date
+latest_date <- county_data %>% 
+  filter(state == "Washington") %>% 
+  arrange(desc(date)) %>% 
+  slice(1) %>% 
+  pull(date)
+
+#filter states for latest data
+state_new <- state_data %>% 
+  filter(date == latest_date) %>% 
+  mutate(GEOID = as.character(GEOID), 
+         state = as.character(state)) %>% 
+  select(GEOID, cases, state, deaths)
+
+#combine state data with mapfiles
+leafmap <- merge(us.map.state, state_new, by.x = "NAME", by.y = "state")
+
+#set pop-ups
+popup_dat <- paste0("<strong>State: </strong>",
+                    leafmap$NAME,
+                    "<br><strong> Number of cases: </strong>",
+                    leafmap$cases)
+
+#set color palette 
+pal <- colorNumeric("YlOrRd", NULL, n = 10)
+
+#render leaflet map
+  leaflet(data = leafmap) %>% 
+      addTiles() %>%
+      setView(-96, 37.8, 4) %>%
+      addPolygons(fillColor = ~pal(cases),
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1,
+                  popup = popup_dat) %>%
+      addLegend("bottomright", pal = pal, values = ~cases,
+                title = "Number of cases",
+                opacity = 1 )
+```
 
 
+```{r clean testing data}
+#create a tibble with state populations
+population <- get_estimates(geography = "state",
+                            product = "population")
+#clean tibble
+pop <- population %>%
+  rename(state = NAME, 
+         population = value) %>% 
+  mutate(GEOID = as.integer(GEOID)) %>%
+  select(-variable) 
+
+#only take US states
+popu = pop[1:52,]
+
+#join population with testing data
+joined_test <- test_clean %>%
+  full_join(popu, by = "GEOID") 
+
+#clean the joined data
+test <- joined_test %>%
+  filter(!is.na(state.y)) %>% 
+  rename(state = state.y) %>%
+  select(-state.x) %>%
+  
+  #add our key variables
+  mutate(people_per_test = (population/total_test),
+         perc_positive = (positive_test/total_test),
+         trouble = (perc_positive * people_per_test))
+
+```
+
+```{r create testing map minus Puerto Rico}
+#filter out PR for mapping because it is outlier
+test_pr <- test %>% 
+  filter(!state == "Puerto Rico")
+
+#combine state data with mapfiles
+map_pr <- merge(us.map.state, test_pr, by.x = "NAME", by.y = "state")
+
+#set pop-ups
+popup_dat <- paste0("<strong>State: </strong>",
+                    map_pr$NAME,
+                    "<br><strong> Trouble Index: </strong>",
+                    map_pr$trouble)
+
+#set color palette 
+pal <- colorNumeric("YlOrRd", NULL, n = 10)
+
+#check to see if this renders correct map - success!
+  leaflet(data = map_pr) %>% 
+      addTiles() %>%
+      setView(-96, 37.8, 4) %>%
+      addPolygons(fillColor = ~pal(trouble),
+                  fillOpacity = 0.8,
+                  color = "#BDBDC3",
+                  weight = 1,
+                  popup = popup_dat) %>%
+      addLegend("bottomright", pal = pal, values = ~trouble,
+                title = "Number of cases",
+                opacity = 1 )
+```
+
+```{r undertesting panel}
+#filter for three highest case states 
 test_hist_3 <- test_history %>%
-  filter(state %in% c("NY", "NJ", "MA"))
+  filter(state %in% c("NY", "NJ", "MA")) %>% 
+  mutate(state = as.character(state))
 
+#create tibble with population values for three states
 pop_3 <- population %>% 
   filter(
     NAME %in% c("New York", "New Jersey", "Massachusetts"), 
@@ -108,274 +203,63 @@ pop_3 <- population %>%
          state = "NAME") %>%
   select(-variable)
 
+#change names of states in order to match with test_hist_3
 pop_3[1, "state"] <- "MA"
 pop_3[2, "state"] <- "NJ"
 pop_3[3, "state"] <- "NY"
 
+#join datasets
+test_hist_joined <- test_hist_3 %>% 
+  left_join(pop_3, by = "state") 
 
-omg_1 <- test_hist_3 %>% 
-  left_join(pop_3, by = "state") %>%
+#add our key variables 
+test_top3 <- test_hist_joined %>% 
   mutate(people_per_test = (pop/total_test_results),
          perc_pos = (positive/total_test_results),
          state = as.factor(state)) %>% 
   select(state, perc_pos, people_per_test, date)
-omg_1 %>% group_by(state) %>% arrange(desc(perc_pos))
 
-omg_1 %>%
+```
+
+```{r undertesting ggplots}
+#create ggplot
+test_top3 %>%
   ggplot(aes(x = people_per_test, y = perc_pos, color = state)) + 
   geom_line() +
   theme_minimal() +
-  transition_states(state, transition_length = 5, state_length = 1) +
-  view_follow() +
-   ggtitle('Now showing {closest_state}',
-          subtitle = 'Frame {frame} of {nframes}')
+  scale_x_continuous(limits = c(0,500000)) +
+  labs(title = "COVID-19 Positive Testing Results as Tests Increase",
+       subtitle = "Don't forget as test numbers increase, people per test decreases", 
+       y = "Percent Positive of Tests",
+       x = "People Per Test", 
+       color = "State")
 
-  
-  
+#save this graph
+ggsave(path = "nyt_corona/pictures", filename = "top_three.png")
 
-```
-
-```{r wrangle for clean testing data}
-state_latest_yes <- state_data %>% 
-  filter(date == latest_date)
-
-joined_test <- test_clean %>% 
-  full_join(state_latest_yes, by = "GEOID") %>% 
-  rename(state = state.y) %>% 
-  select(
-    -state.x,
-    -new_date,
-    -date
-         )
-
-
-joined_test <- joined_test 
-
-population <- get_estimates(geography = "state",
-                            product = "population")
-
-pop <- population %>%
-  rename(state = NAME, 
-         population = value) %>% 
-  mutate(GEOID = as.integer(GEOID)) %>%
-  select(-variable) 
-
-popu = pop[1:52,]
-
-testing_full <- joined_test %>%
-  full_join(popu, by = "GEOID") %>% 
-  filter(!is.na(state.y)) %>% 
-  rename(state = state.x)
-
-```
-
-```{r data wrangling with testing dataset}
-test <- testing_full %>%
-  select(-state.y) %>%
-  mutate(people_per_test = (population/total_test)) %>%
-  mutate(perc_positive = (positive_test/total_test)) %>%
-  mutate(trouble = (perc_positive * people_per_test))
-
-test_2 <- test_1 %>% 
-  mutate(state = as.character(state))
-
-map_1 <- merge(us.map.state, test_2, by.x = "NAME", by.y = "state")
-
-popup_dat <- paste0("<strong>State: </strong>",
-                    map$state,
-                    "<br><strong> Number of cases: </strong>",
-                    map$cases)
-
-  leaflet(data = map) %>% 
-      addTiles() %>%
-    setView(-96, 37.8, 4) %>%
-      addPolygons(fillColor = ~pal(trouble),
-                  fillOpacity = 0.8,
-                  color = "#BDBDC3",
-                  weight = 1,
-                  popup = popup_dat) %>%
-      addLegend("bottomright", pal = pal, values = ~trouble,
-                title = "Trouble Index",
-                opacity = 1 )
-
-
-```
-
-```{r leaflet}
-
-latest_date <- county_data %>% 
-  filter(state == "Washington") %>% 
-  arrange(desc(date)) %>% 
-  slice(1) %>% 
-  pull(date)
-
-state_new <- state_data %>% 
-  filter(date == latest_date) %>% 
-  mutate(GEOID = as.character(GEOID), 
-         state = as.character(state)) %>% 
-  select(GEOID, cases, state, deaths)
-
-leafmap <- merge(us.map.state, state_new, by.x = "NAME", by.y = "state")
-
-state_new
-troublemap <- 
-glimpse(us.map.state)
-
-popup_dat <- paste0("<strong>State: </strong>",
-                    leafmap$NAME,
-                    "<br><strong> Number of cases: </strong>",
-                    leafmap$cases)
-pal <- colorNumeric("RdYlGn", NULL, n = 10)
-
-
-  leaflet(data = leafmap) %>% 
-      addTiles() %>%
-      addPolygons(fillColor = ~pal(cases),
-                  fillOpacity = 0.8,
-                  color = "#BDBDC3",
-                  weight = 1,
-                  popup = popup_dat) %>%
-      addLegend("bottomright", pal = pal, values = ~cases,
-                title = "Number of cases",
-                opacity = 1 )
-
-#transform values keeping in mind your range is from 0-100000
-#log might be good to change colors or manually define shades 
-#try hotspot states like new jersey or ny 
-  #try selecting palates based on number of cases 
-  #addProviderTiles(provider = "CartoDB.Positron")
-#More things to try:
-#death rates, death rates plotted by county / state and to see is it rural places? urban cities? the south? 
-#by state, see population size over case rate, 
-summary(test)
-
-ok <- tibble("Variable" = c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."), 
-              "Value" = c(.5782, 3.4116, 5.6641, 6.7036, 8.8152, 47.3151))
-glimpse(trouble_map)
-trouble<- ok %>% gt() %>% 
-tab_header(
-    title = "Trouble Index Statistics")
-  webshot::install_phantomjs()
-trouble %>%
-gtsave("trouble_stat.png", path = "raw_data" )
-
-state_data
-
-```
-
-
-```{r tab three change in cases over time}
-wash <- state_data %>% 
-  filter(state == "Washington", state == "California")
-
-wash$change <- NA
-for(i in 2:nrow(wash)){
-  wash$change[i] <- wash$cases[i] - wash$cases[i - 1]
-}
-
-plot(log(wash$cases), log(wash$change), type = 'l')
-
-```
-
-
-
-```{r plotting, include = FALSE}
-
-ggplot(wash, aes(x = new_date, y = cases)) +
+#create ggplot again with regression line
+test_top3 %>%
+  ggplot(aes(x = people_per_test, y = perc_pos, color = state)) + 
   geom_line() +
-  geom_point() + 
   theme_minimal() +
+  scale_x_continuous(limits = c(0,500000)) +
+  labs(title = "COVID-19 Positive Testing Results as Tests Increase",
+       subtitle = "Don't forget as test numbers increase, people per test decreases", 
+       y = "Percent Positive of Tests",
+       x = "People Per Test", 
+       color = "State") +
+  geom_smooth(method = "lm")
 
-  theme(axis.text.x = element_text(angle = 70, hjust = 1), 
-        panel.grid.major = element_blank()) + 
-  labs(title = "Confirmed Corona Cases by State (Washington)", 
-       x = "date", 
-       y = "confirmed cases") +
-  scale_x_date(date_breaks = "2 days", date_labels = "%b %d") +
-  #geom_area from this github https://gist.github.com/jtrive84/b1a5d191358883dea1d511d8c78929b6#file-ggplot_auc-r-L9
-  
-  geom_area(mapping=aes(x=new_date), fill="#9898fb", alpha=.5) 
-  
-  #I was looking at this https://stackoverflow.com/questions/47667994/ggplot-x-axis-labels-with-all-x-axis-values for the longest time before I realized that I can change this by using scale_x_date()
+#save this graph
+ggsave(path = "nyt_corona/pictures", filename = "top_three.png")
 
 ```
+
 
 ```{r saving data}
 saveRDS(county_data, file = "nyt_corona/county_data.rds")
 saveRDS(state_data, file = "nyt_corona/state_data.rds")
-saveRDS(leafmap, file = "nyt_corona/leafmap")
+saveRDS(leafmap, file = "nyt_corona/leafmap_1.rds")
 saveRDS(test, file = "nyt_corona/test.rds")
-saveRDS(map_1, file = "nyt_corona/trouble_map_PR.rds")
+saveRDS(map_pr, file = "nyt_corona/trouble_map_PR.rds")
 ```
-
-```{r}
-glimpse(leafmap)
-theme_set(theme_bw())
-three <- three %>% 
-  arrange(state) %>%  
-  group_by(state) %>% 
- slice(which(row_number() %% 7 == 1))
-
-
-
-three$last <- NA
-for(i in 2:nrow(three)){
-  three$last[i] <- three$cases[i] - three$cases[i - 1]}
-
-logplot <- three %>% 
-            filter(!is.negative(change)) %>% 
-            mutate(log_case = log(cases))
-
-plot(log(wash$cases), log(wash$change), type = 'l')
-
-new_three<- three %>% 
-  mutate(log_case = log(cases))
-
-wow %>%
-ggplot(aes(x = log_case , y = log(last), color = state)) +
-  geom_line() +
-  geom_point() + 
-  theme_minimal() +
-  labs(title = "Confirmed Corona Cases by State", 
-       x = "Confirmed cases", 
-       y = "New cases") +
-  transition_reveal(log_case)
-
-
-wow <- state_data %>% 
-  filter(state %in% c("Colorado", "Maine", "New York")) %>% 
-  arrange(state) %>%  
-  group_by(state) %>% 
- slice(which(row_number() %% 7 == 1))
-wow$last <- NA
-for(i in 2:nrow(wow)){
-  wow$last[i] <- wow$cases[i] - wow$cases[i - 1]}
-leafmap 
-wow$last[wow$last == 0] <- 1
-wow$last[is.na(wow$last)] <- 1
-wow <- wow %>% 
-        mutate(log_case = log(cases))
-
-```
-```{r}
-pal <- colorNumeric("YlOrRd", NULL, n = 10)
-glimpse(map_1)
-            
-            popup_dat <- paste0("<strong>State: </strong>",
-                                map_1$NAME,
-                                "<br><strong> Index: </strong>",
-                                map_1$people_per_test)
-            state_new
-            leaflet(data = map_1) %>% 
-                addTiles() %>%
-                setView(-96, 37.8, 4) %>%
-                addPolygons(fillColor = ~pal(people_per_test),
-                            fillOpacity = 0.8,
-                            color = "#BDBDC3",
-                            weight = 1,
-                            popup = popup_dat) %>%
-                addLegend("bottomright", pal = pal, values = ~people_per_test,
-                          title = "People Per Test",
-                          opacity = 1 )
-```
-
