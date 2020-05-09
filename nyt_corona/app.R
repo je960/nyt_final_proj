@@ -1,3 +1,5 @@
+#shiny app: https://je960.shinyapps.io/nyt_corona/
+
 #load necessary packages
 
 library(shiny)
@@ -12,7 +14,10 @@ library(gganimate)
 library(DT)
 library(gt)
 
+#for gganimate
 theme_set(theme_bw())
+
+#gt table the Underestimate panel
 ok <- tibble("Variable" = c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."), 
              "Value" = c(.5782, 3.4116, 5.6641, 6.7036, 8.8152, 47.3151))
 
@@ -20,11 +25,13 @@ gt_tbl <- ok %>% gt() %>%
     tab_header(
         title = "Trouble Index Statistics")
 
+#read in files
 county_data_shiny <- readRDS("county_data.rds")
 state_data_shiny <- readRDS("state_data.rds")
 leafmap_1 <- readRDS("leafmap_1.rds")
 testing_shiny <- readRDS("test.rds")
 trouble_pr <- readRDS("trouble_map_PR.rds")
+
 
 ui <- navbarPage(
     tags$b("Coronavirus Up Close"),
@@ -40,43 +47,34 @@ ui <- navbarPage(
              tabPanel("The Project",
              
              imageOutput("image", width = "100%", height = "100%"),
-             
              p("Image from NYT", align = "center"),
              
              h1(tags$b("The State of COVID-19"), align = "center"),
-             
              p(tags$em("On the day I am writing this, Wednesday May 6th, the headlines of major US news are:"), align = "center"),
-
              imageOutput("headline", width = "100%", height = "100%"),
-             
-             # Add in a fluidRow to center the main text and graphs on the first page.
-             fluidRow(column(2), column(8, 
+                # Add in a fluidRow to center the main text and graphs on the first page.
+                fluidRow(column(2), column(8, 
                                         p("These headlines are a snapshot of the fear carried along with the spread of the coronavirus - ramifications that impact the public health, economy, and sanity of the US. Looking to our hospitals, the US alone currently 
                                           has over 1.2 million confirmed cases of COVID-19 and over 70,000 deaths reported deaths from the virus. Looking to our streets, cities, and states, most of the country, about 214 million people or ~ 65 % of the population, is in lockdown to prevent further spread of the virus."),
                                         p("Unemployment statistics which come out on Friday are expected to show unemployment rose to about 16.1% and a loss of over 22 million nonfarm payroll jobs. That is the same as eliminating every new job created in the last decade."),
                                         p("The COVID-19 pandemic exceeds the scope and imagination of so many, especially when distorted by misinformation in the media, by the President. This project aims to visualize the spread of COVID-19 in the US to the county level with data from the NYT."),
-                                        br(),
-                                        br()
-                                        )
-                    )),
+                                        br(),br()
+                                    )
+                )),
 
             #third Overview tab, About me
             tabPanel("About Me",
                      
-                     # Set the favicon and wording for tab header overall
-                     
+                     # This is amazing, set the favicon image and wording
                      HTML('<script> document.title = "Coronavirus Up Close"; </script>'),
                      tags$head(tags$link(rel="shortcut icon", href="https://lh5.googleusercontent.com/ZyNIMBOw4Y6u-zgwfO6rjzXPDJzRSOJRQ0Iz829tncPk0v_fB76fuqJwpnPYVFXJON7gDZDYUlX93W1HmwNvdbSX1yGmTIikfrmIYN84bsTTrpKGNe_QBTsTMH0cTAR2zPBAgZFT")),
                      
                      
                      titlePanel("Jerrica Li"), 
-                     
-                        #body text 
                         imageOutput("jerrica", width = "100%", height = "100%"),
                              
                         h1(tags$b("I am a junior studying data science at Harvard University."), align = "center"),
-                             
-                        fluidRow(column(2), column(8, 
+                             fluidRow(column(2), column(8, 
                                                         p("I major in Comparative Literature, though I also have academic interests in data science and visualization, US immigration and immigrant rights especially within the Boston Chinese community, and using technology as tools for education."),
                                                         p("This Shiny app is the final project for the course Government 1005: Data and my first ever! The topic is personal, as it is with everyone in a world affected by the pandemic. On Tuesday, March 10th, 2020, Harvard College students were forced to move out of campus within 5 days. 
                                                           The campus was in mayhem, heightened with chaos, confusion, denial, and reckoning with the severity of COVID-19. So in some ways, this project is as much for the viewers of the app as it is for me personally to process the effects of the pandemic and explore where 
@@ -86,14 +84,13 @@ ui <- navbarPage(
                                                         p(a(href="mailto:jerrica_li@college.harvard.edu?Subject=Hello!", "My college email")),
                                                         p(a(href="https://github.com/je960", "My Github account")),
                                                         p(a(href="https://www.linkedin.com/in/jerrica-li/", "My LinkedIn account"))
-                        ))
+                            ))
             ),
             
             #second Overview tab, Data Sources
             tabPanel("Credits",
                      
                      h1(tags$b("Data Sources"), align = "center"),
-                     
                      fluidRow(column(2), column(8, 
                                                 p("State and county data coronavirus counts and deaths are from the meticulously kept NYT database (John Hopkins Coronavirus Resource Center also has robust international counts). Personally, the NYT have been my main source of news throughout this crisis as I trust their accuracy and dedication to quality journalism.
                                                   I grew up in a non-political household, but I began listening to their daily podcasts as a sophomore in college and it became my main source of education to foray into American politics. They are doing amazing work on the frontlines and keeping the American public informed.", a(href="https://www.nytimes.com/article/coronavirus-county-data-us.html", "Find the NYT data here.")),
@@ -104,7 +101,7 @@ ui <- navbarPage(
                                                 p("Mapping was done with shapefiles from the US Census Bureau. It was a long arduous journey to learn Leaflet, but the availability of these kinds of cartography boundaries by the US Census Bureau makes mapping much more accesible than I first imagined.", a(href="https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html", "Find the US Census Bureau map files here.")),
                                                 br(), 
                                                 p("Thank you to my friends and all the educators, staff, and fellow Odysseus-figures in Gov 1005 who have touched this work: the herioc Preceptor, the caffeinated June Hwang, the Leaflet wise Evelyn Cai, Joshua Pan, Katelyn Li, Jamie Bikales, James Bedford, Katherine Miclau, and Sara Li. It takes a village for a complit girl to learn R.")
-                                                ))
+                    ))
             ))
     ),
     
@@ -115,26 +112,27 @@ ui <- navbarPage(
                  sidebarLayout(
                      sidebarPanel(
                          
-                         p(tags$em("Be aware of the fitted scale.", 
-                                   "it's interactive")),
+                         p("Note each graph's fitted scale and scroll down to see state data. All of these graphs are interactive, so hover and click to see exact numbers for each date."),
                          
                          #ask user to input state
-                         
                          selectInput(inputId = 'state', 
                                      label = 'Choose a state:', 
                                      choice = levels(state_data_shiny$state)
                          ),
                          br(),
                          
-                         #ask user to input state
+                         #ask user to input county (which shows up first)
                          uiOutput("countySelection")
                      ),
                      
                      #output state plot and death plot
                      mainPanel(
+                         #state
                          h1(tags$b("Corona Statistics by County"), align = "center"),
                          plotlyOutput("countyplot"), br(), br(),
                          plotlyOutput("countydeath"), br(), br(), br(), br(), br(), br(),
+                         
+                         #county
                          h1(tags$b("Corona Virus Statistics by State"), align = "center"),
                          plotlyOutput("stateplot"), br(), br(),
                          plotlyOutput("deathplot"))
@@ -142,15 +140,19 @@ ui <- navbarPage(
              )
     ),
     
+    #US state map panel
     tabPanel("State Maps", 
              titlePanel("Mapping the Pandemic"),
              sidebarLayout(
                  sidebarPanel(
                      p("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
                                 in the US, so many states may be underreporting their numbers of confirmed cases. Hover or click over each state for a quick look and zoom in and out to view states like Hawaii, Alaska, and Puerto Rico."),
+                     
+                     #input variable for map
                      radioButtons(inputId="death", label="Choose your variable:",
                                   choices=list("deaths", "cases")),
                      ),
+                 
                  mainPanel(
                      h2(tags$b("US Map: Corona by State "), align = "center"),
                      leafletOutput("state_map"),
@@ -159,6 +161,7 @@ ui <- navbarPage(
              )
     ), 
     
+    #Logarithm Axes Panel
     tabPanel("Logarithmic Functions",
              titlePanel("Modeling with Logarithmic Functions"),
              sidebarLayout(
@@ -173,13 +176,13 @@ ui <- navbarPage(
                      h3("Note"),
                      p("One final note is that this graph may diminish the human side of the epidemic because the each tic mark exponentially grows to encompass more and more lives at risk
                        in ways it's hard to imagine. Treat this graph as a big picture image that shows the virus to scale."),
-                     p(tags$em("Please be patient for about 30 seconds as the animation loads. It's worth the wait!")),
+                     p(tags$em("Please be patient for about 30 seconds as the animation loads. The screen may start grey and after a few moments will be in full color. It's worth the wait!")),
                      
                      #ask user to input state
-                     
                      selectInput(inputId = "logstate", label = "Select states to show on graph", choices = levels(state_data_shiny$state), multiple = TRUE, selected = "New York"),
                      br(),br()
                  ),
+                 
                  mainPanel(
                      h1(tags$b("Coronavirus to Scale"), align = "center"), 
                      imageOutput("logplot")
@@ -187,6 +190,7 @@ ui <- navbarPage(
              )
     ),
     
+    #Experiment!
     tabPanel("Underreporting Experiment",
              titlePanel(
                  h1("Underreporting COVID-19 Cases in the US",
@@ -257,7 +261,8 @@ ui <- navbarPage(
               increases, tests per person increases. And hopefully we'll see a curve easier to read!"),
             imageOutput("testgif", width = "100%", height = "100%"),
             br(),
-            p("That is a beautiful plot! We can see that actually, after the initial mess when the testing is just getting started, the behavior of the three states is quite similar and parabolic. As testing increases, there is an increase in percent positive, but this gradually decreases. What do you think of these graphs? Is it enough to claim that testing behavior is biased towards a lower number of tests?")
+            p("That is a beautiful plot! We can see that actually, after the initial mess when the testing is just getting started, the behavior of the three states is quite similar and parabolic. As testing increases, there is an increase in percent positive, but this gradually decreases. What do you think of these graphs? Is it enough to claim that testing behavior is biased towards a lower number of tests?"),
+            br(), br()
              ))
     )
 )
@@ -265,11 +270,9 @@ ui <- navbarPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
-    #updateSelectizeInput(inputId = "selectize", label = "Select states to show on graph", choices = data, server = TRUE)
-    
-    #State data tab, county
-    #change county input to dynamically change with chosen state
-    #using Ui/uiOutput function to dynamically generate a selectInput
+
+    #State data tab, change county input to dynamically change with chosen state
+    #using UI function to dynamically generate a selectInput
     output$countySelection <- renderUI({
         selectInput(inputId = 'county', 
                     label = 'Choose a county:', 
@@ -389,7 +392,7 @@ server <- function(input, output) {
         c
     })
     
-    #State Maps Panel, cases 
+    #State Maps Panel, map
     output$state_map <- renderLeaflet({
             
         if(input$death == "deaths"){
@@ -456,7 +459,7 @@ server <- function(input, output) {
         
         })
  
-    #Logarithmic Panel, county cases over time plot
+    #Logarithmic Panel, animation
     output$logplot <- renderImage({
         
         outfile <- tempfile(fileext='.gif')
@@ -536,7 +539,7 @@ server <- function(input, output) {
     }, deleteFile = FALSE
     )
     
-    
+    #Underreport panel, all variables gt table 
     output$variable_table = DT::renderDataTable({
         testing_shiny %>% 
             select(state, everything()) %>% 
@@ -545,12 +548,12 @@ server <- function(input, output) {
     })
     
     
-    #Logarithmic Panel, county cases over time plot
+    #Underreport panel, trouble gt
     output$trouble_stats <- render_gt(
         expr = gt_tbl
     )
     
-    
+    #Underreport panel, US map 
     output$trouble <- renderLeaflet({
         
         if(input$variable == "1") {
@@ -626,11 +629,10 @@ server <- function(input, output) {
         
         list(src = "./pictures/testing.gif",
          contentType = 'image/gif',
-         width = 500,
-         height = 550,
-         alt = "This is an animation graph of the trajectory of coronavirus.", 
+         width = 575,
+         height = 610, 
          style="display: block; margin-left: auto; margin-right: auto;")
-    }, deleteFile = TRUE)
+    }, deleteFile = FALSE)
     
     # Underestimating panel, graph of top three states
     output$try_1 <- renderImage({

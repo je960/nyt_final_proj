@@ -237,21 +237,40 @@ test_top3 %>%
 #save this graph
 ggsave(path = "nyt_corona/pictures", filename = "top_three.png")
 
+
 #create ggplot again with regression line
 test_top3 %>%
   ggplot(aes(x = people_per_test, y = perc_pos, color = state)) + 
   geom_line() +
+  geom_smooth(method = "lm") +
   theme_minimal() +
   scale_x_continuous(limits = c(0,500000)) +
   labs(title = "COVID-19 Positive Testing Results as Tests Increase",
        subtitle = "Don't forget as test numbers increase, people per test decreases", 
        y = "Percent Positive of Tests",
        x = "People Per Test", 
-       color = "State") +
-  geom_smooth(method = "lm")
+       color = "State") 
 
 #save this graph
-ggsave(path = "nyt_corona/pictures", filename = "top_three.png")
+ggsave(path = "nyt_corona/pictures", filename = "regression.png")
+
+
+#create a new variable that flips the x-axis
+test_top3 <- test_top3 %>% 
+  mutate(new = 1/people_per_test)
+
+#create ggplot 
+test_top3 %>%
+  ggplot(aes(x = new, y = perc_pos, color = state)) + 
+  geom_line() +
+  theme_minimal() +
+  labs(title = "COVID-19 Positive Testing Results as Tests Increase",
+       subtitle = "X-axis is now tests per person", 
+       y = "Percent Positive of Tests",
+       x = "Tests per Person", 
+       color = "State") 
+
+ggsave(path = "nyt_corona/pictures", filename = "flip.png")
 
 ```
 
