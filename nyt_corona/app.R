@@ -22,8 +22,7 @@ gt_tbl <- ok %>% gt() %>%
 
 county_data_shiny <- readRDS("county_data.rds")
 state_data_shiny <- readRDS("state_data.rds")
-leafmap <- readRDS("leafmap.rds")
-leafletmap_deaths <- readRDS("leafmap_deaths")
+leafmap_1 <- readRDS("leafmap_1.rds")
 testing_shiny <- readRDS("test.rds")
 trouble_pr <- readRDS("trouble_map_PR.rds")
 
@@ -147,11 +146,10 @@ ui <- navbarPage(
              titlePanel("Mapping the Pandemic"),
              sidebarLayout(
                  sidebarPanel(
-                     p(tags$em("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
-                                in the US, so many states may be underreporting their numbers of confirmed cases. Hover over each state for a quick look and zoom in and out to view states like Hawaii, Alaska, and Puerto Rico.")),
-                     checkboxInput(inputId = "death",
-                                   label = "View deaths per state",
-                                   value = FALSE)
+                     p("Let's explore the spread of the pandemic in America, looking at the most recent numbers. Keep in mind that testing is not widely available
+                                in the US, so many states may be underreporting their numbers of confirmed cases. Hover or click over each state for a quick look and zoom in and out to view states like Hawaii, Alaska, and Puerto Rico."),
+                     radioButtons(inputId="death", label="Choose your variable:",
+                                  choices=list("deaths", "cases")),
                      ),
                  mainPanel(
                      h2(tags$b("US Map: Corona by State "), align = "center"),
@@ -372,26 +370,24 @@ server <- function(input, output) {
     
     #State Maps Panel, cases 
     output$state_map <- renderLeaflet({
-        
-        if (input$death == FALSE) {
             
-            
+        if(input$death == "deaths"){
             pal <- colorNumeric("YlOrRd", NULL, n = 10)
             
             popup_dat <- paste0("<strong>State: </strong>", 
-                                leafmap$NAME, 
-                                  "<br><strong>Cases: </strong>", 
-                                leafmap$cases)
+                                leafmap_1$NAME, 
+                                  "<br><strong>Deaths: </strong>", 
+                                leafmap_1$deaths)
             
             labels <- sprintf(
-                "%s<br/>%g cases",
-                leafmap$NAME, leafmap$cases
+                "%s<br/>%g deaths",
+                leafmap_1$NAME, leafmap_1$deaths
             ) %>% lapply(htmltools::HTML)
             
-            leaflet(data = leafmap) %>% 
+            leaflet(data = leafmap_1) %>% 
                 addTiles() %>%
                 setView(-96, 37.8, 4) %>%
-                addPolygons(fillColor = ~pal(cases),
+                addPolygons(fillColor = ~pal(deaths),
                             fillOpacity = 0.8,
                             color = "#BDBDC3",
                             weight = 1,
@@ -400,41 +396,43 @@ server <- function(input, output) {
                             labelOptions = labelOptions(
                                 textsize = "15px",
                                 direction = "auto")) %>%
-                addLegend(position = "bottomright", pal = pal, values = ~cases,
-                          title = "Number of cases",
+                addLegend(position = "bottomright", pal = pal, values = ~deaths,
+                          title = "Number of Deaths",
                           opacity = 1 )
         }
         
-        if (input$death == TRUE) {
+        else if (input$death == "cases"){
             
-            pal <- colorNumeric("YlOrRd", NULL, n = 10)
-            
-            state_popup <- paste0("<strong>State: </strong>", 
-                                  leafmap$NAME, 
-                                  "<br><strong>Deaths: </strong>", 
-                                  leafmap$deaths)
-            
-            labels <- sprintf(
-                "%s<br/>%g deaths",
-                leafmap$NAME, leafmap$deaths
-            ) %>% lapply(htmltools::HTML)
-            
-            leaflet(data = leafmap) %>% 
-                addTiles() %>%
-                setView(-96, 37.8, 4) %>%
-                addPolygons(fillColor = ~pal(deaths),
-                            fillOpacity = 0.8,
-                            color = "#BDBDC3",
-                            weight = 1,
-                            label = labels,
-                            labelOptions = labelOptions(
-                                textsize = "15px",
-                                direction = "auto"), 
-                            popup = state_popup) %>%
-                addLegend(position = "bottomright", pal = pal, values = ~deaths,
-                          title = "Number of deaths",
-                          opacity = 1 )
-            }
+        pal <- colorNumeric("YlOrRd", NULL, n = 10)
+        
+        popup_dat <- paste0("<strong>State: </strong>", 
+                            leafmap_1$NAME, 
+                            "<br><strong>Cases: </strong>", 
+                            leafmap_1$cases)
+        
+        labels <- sprintf(
+            "%s<br/>%g cases",
+            leafmap_1$NAME, leafmap_1$cases
+        ) %>% lapply(htmltools::HTML)
+        
+        leaflet(data = leafmap_1) %>% 
+            addTiles() %>%
+            setView(-96, 37.8, 4) %>%
+            addPolygons(fillColor = ~pal(cases),
+                        fillOpacity = 0.8,
+                        color = "#BDBDC3",
+                        weight = 1,
+                        popup = popup_dat,
+                        label = labels,
+                        labelOptions = labelOptions(
+                            textsize = "15px",
+                            direction = "auto")) %>%
+            addLegend(position = "bottomright", pal = pal, values = ~cases,
+                      title = "Number of cases",
+                      opacity = 1 )
+        }
+        
+        
         })
  
     #Logarithmic Panel, county cases over time plot
@@ -490,7 +488,7 @@ server <- function(input, output) {
     # Project panel, Overview tab, COVID-19 NYT Illustration
     output$image <- renderImage({
         # Return a list containing the filename and alt text
-        list(src = './pictures/cybor.jpg', 
+        list(src = './pictures/illustration.jpg', 
              height = 400,
              width = 550, style="display: block; margin-left: auto; margin-right: auto;")
     }, deleteFile = FALSE

@@ -29,7 +29,7 @@ state_data <- read.csv("covid-19-data/us-states.csv")
 county_data <- read.csv('covid-19-data/us-counties.csv')
 
 #current testing numbers from tracking project
-testing <- read.csv("covid-19-data/yes.csv")
+testing <- read.csv("covid-19-data/current_test.csv")
 
 #historical testing numbers from tracking project
 test_history <- read.csv("covid-19-data/test_historical.csv")
