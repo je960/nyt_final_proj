@@ -231,12 +231,33 @@ ui <- navbarPage(
              
              h2("Let's map it!"), 
              p("Mapping out the data helps us understand visually where the worst states are. Remember, a high index means that these states are not doing enough testing and the scale of the problem is probably much worse than reported. 
-               For the sake of these graphs, I ommitted Puerto Rico as an outlier so that you can see the definition within the continental US. Feel free to zoom in and out and move the map."),
+               For the sake of these graphs, I ommitted Puerto Rico as an outlier so that you can see the definition within the continental US. Feel free to zoom out and move the map. Click each state to see the numbers."),
              radioButtons(inputId="variable", label="Choose your variable:",
                           choices=list("People Per Test" = 1, "Number of Tests" = 2, "Trouble Index" = 3)), 
              
              leafletOutput("trouble"),
-
+             
+             hr(),
+        
+             h2("Let's take a closer look at our assumptions."),
+             p("Great, we've created a proxy variable to look at US states and their effectiveness against COVID-19 in a new light. But we had a little bit of trouble with the obvious outlier - Puerto Rico. Puerto Rico has very low testing which means it had sky high people per test ratios.
+               This in turn affected it's index number to be far too high. Is that fair? Should there be some weight, after a certain limit, so that extremes of both variables are less significant?"),
+             p("Now lets think back to our assumptions - that all of these states are exhibiting the same behaviors towards testing. Though that probably is a good assumption, for now, let's consider why that could be biased. 
+               For instance, maybe when a state is first starting to test (so when people per test is very high), they are only testing people they are very sure are sick. So in the beginning, the percent of positive tests might be reaching 100% or 50% or some other very high number."),
+             p("With this assumption, there would be a bias in our data where a smaller number of tests corresponds to a higher percent positive, just by the nature of how people are testing. Is this true? Maybe we do need to weight our index!"),
+             p("It makes sense to look at the trajectory of the top few states with the highest number of cases and their curve over time: New York, Massachusetts, and New Jersey.
+               If we plot the trajectory of these three states on a graph with people per test on the x-axis and percent positive on the y-axis, and if this assumption is true, then we might expect to see a line which we can use as a weight to balance our index. Let's test it out and graph the three top states on our axes."),
+             imageOutput("try_1", width = "100%", height = "100%"), 
+             br(),
+             p("This is a crazy graph! Just for fun, let's add a linear regression line for each state where the shadow is a 95% confidence interval."),
+            imageOutput("regression", width = "100%", height = "100%"),
+            br(),
+            p("What's interesting about this graph is that all the numbers are bunched up closer to the origin because this is a different graph than we're used to reading (from left to right). Instead, time moves right to left because the more tests, the lower number of people per tests. This graph doesn't tell us much because we can't see what's going on where all the points are 
+              bunched and it looks like the regression slope for some states are positive, others negative. To fix this, what if we tried flipping our x-axis? What if we plotted the x-axis as population divided by total tests instead of the other way around? That variable would be tests per people. That's a little funny to think about, but at least now it's more logicial. As testing (and time)
+              increases, tests per person increases. And hopefully we'll see a curve easier to read!"),
+            imageOutput("testgif", width = "100%", height = "100%"),
+            br(),
+            p("That is a beautiful plot! We can see that actually, after the initial mess when the testing is just getting started, the behavior of the three states is quite similar and parabolic. As testing increases, there is an increase in percent positive, but this gradually decreases. What do you think of these graphs? Is it enough to claim that testing behavior is biased towards a lower number of tests?")
              ))
     )
 )
@@ -599,6 +620,38 @@ server <- function(input, output) {
         }
         
     })
+    
+    #Underestimate panel, gif 
+    output$testgif <- renderImage({
+        
+        list(src = "./pictures/testing.gif",
+         contentType = 'image/gif',
+         width = 500,
+         height = 550,
+         alt = "This is an animation graph of the trajectory of coronavirus.", 
+         style="display: block; margin-left: auto; margin-right: auto;")
+    }, deleteFile = TRUE)
+    
+    # Underestimating panel, graph of top three states
+    output$try_1 <- renderImage({
+        # Return a list containing the filename and alt text
+        list(src = './pictures/top_three.png', 
+             height = 600,
+             width = 850, 
+             style="display: block; margin-left: auto; margin-right: auto;")
+    }, deleteFile = FALSE
+    )
+    
+    # Underestimating panel, regression of top three states
+    output$regression <- renderImage({
+        # Return a list containing the filename and alt text
+        list(src = './pictures/regression.png', 
+             height = 660,
+             width = 655, 
+             style="display: block; margin-left: auto; margin-right: auto;")
+    }, deleteFile = FALSE
+    )
+    
     
 }
 
